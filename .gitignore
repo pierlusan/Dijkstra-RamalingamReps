@@ -1,0 +1,23 @@
+# CMake build artifacts
+cmake-build-debug/
+build/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# IDE settings
+.idea/
+.vscode/
+
+# Compiled executables
+*.exe
+*.out
+benchmark
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Output data
+output_grafi/
