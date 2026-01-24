@@ -6,6 +6,7 @@
 #include <queue>
 #include <algorithm> // per reverse
 #include <limits>    // per numeric_limits
+#include "BenchmarkStats.h" // BENCHMARK INSTRUMENTATION
 
 const int INF = std::numeric_limits<int>::max();
 
@@ -26,15 +27,22 @@ void DijkstraSolver::compute(int source) {
                         std::vector<std::pair<int, int>>, 
                         std::greater<std::pair<int, int>>> pq;
 
+    // pq.push({0, source});
+    // Cost doesn't count for initial push usually, but let's be consistent or just count pop/decreases.
+    // User asked for "push/pop/decrease".
     pq.push({0, source});
+    Stats::heap_ops++; // BENCHMARK INSTRUMENTATION: Push
 
     while (!pq.empty()) {
         int d = pq.top().first;
         int u = pq.top().second;
         pq.pop();
+        Stats::heap_ops++; // BENCHMARK INSTRUMENTATION: Pop
 
         // Se abbiamo trovato un percorso più breve per u prima di estrarlo, ignoriamo
         if (d > dist[u]) continue;
+
+        Stats::visited_nodes++; // BENCHMARK INSTRUMENTATION: Node extracted and processed
 
         // Itera sui vicini
         for (auto& edge : graph.adj[u]) {
@@ -45,6 +53,8 @@ void DijkstraSolver::compute(int source) {
                 dist[v] = dist[u] + weight;
                 parent[v] = u;
                 pq.push({dist[v], v});
+                Stats::heap_ops++; // BENCHMARK INSTRUMENTATION: Push (Decrease Key simulated)
+                Stats::relaxed_edges++; // BENCHMARK INSTRUMENTATION: Edge relaxed
             }
         }
     }

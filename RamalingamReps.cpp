@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <iostream>
 #include <queue>
+#include "BenchmarkStats.h" // BENCHMARK INSTRUMENTATION
 
 const int INF = std::numeric_limits<int>::max();
 
@@ -19,13 +20,17 @@ void RamalingamReps::initialize(int source) {
                         std::vector<std::pair<int, int>>, 
                         std::greater<std::pair<int, int>>> pq;
     pq.push({0, source});
+    Stats::heap_ops++; // BENCHMARK INSTRUMENTATION
 
     while (!pq.empty()) {
         int d = pq.top().first;
         int u = pq.top().second;
         pq.pop();
+        Stats::heap_ops++; // BENCHMARK INSTRUMENTATION
 
         if (d > dist[u]) continue;
+
+        Stats::visited_nodes++; // BENCHMARK INSTRUMENTATION
 
         for (auto& edge : graph.adj[u]) {
             int v = edge.first;
@@ -34,6 +39,8 @@ void RamalingamReps::initialize(int source) {
                 dist[v] = dist[u] + w;
                 parent[v] = u;
                 pq.push({dist[v], v});
+                Stats::heap_ops++; // BENCHMARK INSTRUMENTATION
+                Stats::relaxed_edges++; // BENCHMARK INSTRUMENTATION
             }
         }
     }
@@ -97,6 +104,8 @@ void RamalingamReps::handleEdgeUpdate(int u, int v, int newWeight) {
         dist[v] = dist[u] + newWeight;
         parent[v] = u;
         pq.push({dist[v], v});
+        Stats::heap_ops++; // BENCHMARK INSTRUMENTATION
+        Stats::relaxed_edges++; // BENCHMARK INSTRUMENTATION
     }
     
     // Caso 2: Incremento di peso su un arco usato nell'SPJO
@@ -108,11 +117,13 @@ void RamalingamReps::handleEdgeUpdate(int u, int v, int newWeight) {
         dist[v] = INF; 
         parent[v] = -1;
         q_inval.push(v);
+        // BFS uses queue ops, not heap ops. Not counting as heap_ops.
         affected.push_back(v);
 
         while(!q_inval.empty()){
             int curr = q_inval.front(); 
             q_inval.pop();
+            Stats::visited_nodes++; // BENCHMARK INSTRUMENTATION: BFS visit
 
             for(auto& edge : graph.adj[curr]){
                 int succ = edge.first;
@@ -134,6 +145,8 @@ void RamalingamReps::handleEdgeUpdate(int u, int v, int newWeight) {
                 // Se ha trovato un nuovo percorso valido (dist != INF), lo aggiungiamo alla PQ
                 if(dist[node] != INF){
                     pq.push({dist[node], node});
+                    Stats::heap_ops++; // BENCHMARK INSTRUMENTATION
+                    Stats::relaxed_edges++; // BENCHMARK INSTRUMENTATION (Effective relaxation)
                 }
             }
         }
@@ -144,8 +157,11 @@ void RamalingamReps::handleEdgeUpdate(int u, int v, int newWeight) {
         int d = pq.top().first;
         int curr = pq.top().second;
         pq.pop();
+        Stats::heap_ops++; // BENCHMARK INSTRUMENTATION
 
         if (d > dist[curr]) continue;
+
+        Stats::visited_nodes++; // BENCHMARK INSTRUMENTATION
 
         for (auto& edge : graph.adj[curr]) {
             int succ = edge.first;
@@ -155,6 +171,8 @@ void RamalingamReps::handleEdgeUpdate(int u, int v, int newWeight) {
                 dist[succ] = dist[curr] + w;
                 parent[succ] = curr;
                 pq.push({dist[succ], succ});
+                Stats::heap_ops++; // BENCHMARK INSTRUMENTATION
+                Stats::relaxed_edges++; // BENCHMARK INSTRUMENTATION
             }
         }
     }
@@ -178,6 +196,8 @@ void RamalingamReps::handleEdgeInsertion(int u, int v, int w) {
         dist[v] = dist[u] + w;
         parent[v] = u;
         pq.push({dist[v], v});
+        Stats::heap_ops++; // BENCHMARK INSTRUMENTATION
+        Stats::relaxed_edges++; // BENCHMARK INSTRUMENTATION
     }
 
     // Propagazione standard
@@ -185,8 +205,11 @@ void RamalingamReps::handleEdgeInsertion(int u, int v, int w) {
         int d = pq.top().first;
         int curr = pq.top().second;
         pq.pop();
+        Stats::heap_ops++; // BENCHMARK INSTRUMENTATION
 
         if (d > dist[curr]) continue;
+
+        Stats::visited_nodes++; // BENCHMARK INSTRUMENTATION
 
         for (auto& edge : graph.adj[curr]) {
             int succ = edge.first;
@@ -195,6 +218,8 @@ void RamalingamReps::handleEdgeInsertion(int u, int v, int w) {
                 dist[succ] = dist[curr] + weight;
                 parent[succ] = curr;
                 pq.push({dist[succ], succ});
+                Stats::heap_ops++; // BENCHMARK INSTRUMENTATION
+                Stats::relaxed_edges++; // BENCHMARK INSTRUMENTATION
             }
         }
     }
@@ -232,6 +257,7 @@ void RamalingamReps::handleEdgeDeletion(int u, int v) {
     while(!q_inval.empty()){
         int curr = q_inval.front(); 
         q_inval.pop();
+        Stats::visited_nodes++; // BENCHMARK INSTRUMENTATION (BFS)
 
         for(auto& edge : graph.adj[curr]){
             int succ = edge.first;
@@ -249,6 +275,8 @@ void RamalingamReps::handleEdgeDeletion(int u, int v) {
         if(recomputeNode(node)){
             if(dist[node] != INF){
                 pq.push({dist[node], node});
+                Stats::heap_ops++; // BENCHMARK INSTRUMENTATION
+                Stats::relaxed_edges++; // BENCHMARK INSTRUMENTATION
             }
         }
     }
@@ -258,8 +286,11 @@ void RamalingamReps::handleEdgeDeletion(int u, int v) {
         int d = pq.top().first;
         int curr = pq.top().second;
         pq.pop();
+        Stats::heap_ops++; // BENCHMARK INSTRUMENTATION
 
         if (d > dist[curr]) continue;
+        
+        Stats::visited_nodes++; // BENCHMARK INSTRUMENTATION
 
         for (auto& edge : graph.adj[curr]) {
             int succ = edge.first;
@@ -268,6 +299,8 @@ void RamalingamReps::handleEdgeDeletion(int u, int v) {
                 dist[succ] = dist[curr] + weight;
                 parent[succ] = curr;
                 pq.push({dist[succ], succ});
+                Stats::heap_ops++; // BENCHMARK INSTRUMENTATION
+                Stats::relaxed_edges++; // BENCHMARK INSTRUMENTATION
             }
         }
     }

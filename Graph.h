@@ -46,6 +46,11 @@ public:
     
     // Restituisce il peso di un arco (u, v). Ritorna -1 se l'arco non esiste
     int getEdgeWeight(int u, int v) const;
+    
+    // Carica grafo da file DIMACS (9th DIMACS Challenge format)
+    // Supporta file .gz compressi e file non compressi
+    // Formato: linee "c" commenti, "p sp n m" header, "a u v w" archi
+    void loadFromDIMACS(const std::string& filename);
 };
 
 #endif

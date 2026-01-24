@@ -7,6 +7,7 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm> // per std::find_if
+#include <zlib.h>    // per supporto file .gz
 
 Graph::Graph(int vertices, bool undirected) : numVertices( vertices ), isUndirected( undirected ) {
     if (vertices <= 0) {
@@ -169,7 +170,8 @@ void Graph::exportToDot() {
 
 void Graph::renderGraph(const std::string& outputName) {
     // Crea la cartella output_grafi se non esiste
-    system("mkdir -p output_grafi");
+    int dirRes = system("mkdir -p output_grafi");
+    (void)dirRes; // Silence unused variable warning
     
     std::string dotParam = "output_grafi/" + outputName + ".dot";
     std::string pngParam = "output_grafi/" + outputName + ".png";
@@ -208,7 +210,8 @@ void Graph::renderGraph(const std::string& outputName) {
         std::cout << "Grafo renderizzato in: " << pngParam << std::endl;
         // Prova ad aprirlo (Linux)
         std::string openCmd = "xdg-open " + pngParam + " > /dev/null 2>&1 &";
-        system(openCmd.c_str()); 
+        int openRes = system(openCmd.c_str());
+        (void)openRes; 
     } else {
         std::cerr << "Errore esecuzione comando dot. Assicurati che Graphviz sia installato." << std::endl;
     }
@@ -227,4 +230,85 @@ int Graph::getEdgeWeight(int u, int v) const {
     }
     
     return -1; // Arco non trovato
+}
+
+void Graph::loadFromDIMACS(const std::string& filename) {
+    
+    gzFile file = gzopen(filename.c_str(), "rb");
+    if (!file) {
+        throw std::runtime_error("Impossibile aprire il file: " + filename);
+    }
+    
+    // Buffer per lettura efficiente
+    constexpr size_t BUFFER_SIZE = 256;
+    char buffer[BUFFER_SIZE];
+    
+    int n = 0, m = 0;
+    bool headerFound = false;
+    
+    // Prima passata: trova l'header per pre-allocare
+    while (gzgets(file, buffer, BUFFER_SIZE) != nullptr) {
+        if (buffer[0] == 'c') {
+            // Commento, ignora
+            continue;
+        } else if (buffer[0] == 'p') {
+            // Header: "p sp <nodi> <archi>"
+            if (sscanf(buffer, "p sp %d %d", &n, &m) == 2) {
+                headerFound = true;
+                break;
+            }
+        }
+    }
+    
+    if (!headerFound || n <= 0) {
+        gzclose(file);
+        throw std::runtime_error("Header DIMACS non trovato o non valido.");
+    }
+    
+    // Reset e pre-allocazione
+    numVertices = n;
+    adj.clear();
+    rev_adj.clear();
+    adj.resize(n);
+    rev_adj.resize(n);
+    
+    // Stima archi per nodo per pre-allocazione (opzionale ma utile)
+    // Media: m/n archi per nodo, ma distribuiti non uniformemente
+    // Non pre-allochiamo le liste interne per evitare sprechi di memoria
+    
+    int edgesLoaded = 0;
+    int u, v, w;
+    
+    // Parsing degli archi
+    while (gzgets(file, buffer, BUFFER_SIZE) != nullptr) {
+        if (buffer[0] == 'a') {
+            // Arco: "a <sorgente> <destinazione> <peso>"
+            if (sscanf(buffer, "a %d %d %d", &u, &v, &w) == 3) {
+                // DIMACS usa indici 1-based, convertiamo a 0-based
+                u--;
+                v--;
+                
+                if (u < 0 || u >= n || v < 0 || v >= n) {
+                    gzclose(file);
+                    throw std::runtime_error("Indice vertice fuori range nel file DIMACS.");
+                }
+                
+                if (w < 0) {
+                    gzclose(file);
+                    throw std::runtime_error("Peso negativo trovato nel file DIMACS.");
+                }
+                
+                // Inserimento diretto (più efficiente di addEdge per caricamento massivo)
+                adj[u].emplace_back(v, w);
+                rev_adj[v].emplace_back(u, w);
+                edgesLoaded++;
+            }
+        }
+        // Ignora altre linee (commenti 'c', ecc.)
+    }
+    
+    gzclose(file);
+    
+    std::cout << "Grafo DIMACS caricato da " << filename << ": " 
+              << numVertices << " nodi, " << edgesLoaded << " archi." << std::endl;
 }

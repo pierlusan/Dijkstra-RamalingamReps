@@ -21,3 +21,12 @@ Thumbs.db
 
 # Output data
 output_grafi/
+venv/
+grafi/
+
+results.csv
+plots/
+
+Dijkstra
+benchmark
+benchmark_driver
