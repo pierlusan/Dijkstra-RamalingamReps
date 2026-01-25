@@ -148,7 +148,7 @@ int main() {
     // Since we don't know N beforehand easily without parsing, let's trust Graph to handle it or provide a large enough N.
     // The USA-road-d.W.gr usually has ~6M nodes.
     
-    std::string graphPath = "grafi/USA-road-d.W.gr";
+    std::string graphPath = "grafi/grafo500.txt";
     
     std::cout << "Loading graph from " << graphPath << "..." << std::endl;
     
@@ -157,8 +157,13 @@ int main() {
     Graph g_static(1);
     Graph g_dynamic(1);
 
-    g_static.loadFromDIMACS(graphPath);
-    g_dynamic.loadFromDIMACS(graphPath); // Load twice to have independent instances
+    if(graphPath.find(".txt") != std::string::npos) {
+        g_static.loadFromFile(graphPath);
+        g_dynamic.loadFromFile(graphPath);
+    } else {
+        g_static.loadFromDIMACS(graphPath);
+        g_dynamic.loadFromDIMACS(graphPath);
+    }
 
     N = g_static.numVertices;
     // M is not exposed directly in Graph public fields easily except via adj size sum, but let's just print loaded.
