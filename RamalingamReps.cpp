@@ -35,6 +35,7 @@ void RamalingamReps::initialize(int source) {
         for (auto& edge : graph.adj[u]) {
             int v = edge.first;
             int w = edge.second;
+            Stats::scanned_edges++; // BENCHMARK: Edge examined
             if (dist[u] != INF && dist[u] + w < dist[v]) {
                 dist[v] = dist[u] + w;
                 parent[v] = u;
@@ -61,6 +62,7 @@ bool RamalingamReps::recomputeNode(int v) {
         for (auto& edge : graph.rev_adj[v]) {
             int p = edge.first;
             int w = edge.second;
+            Stats::scanned_edges++; // BENCHMARK: Edge examined
             if (dist[p] != INF) {
                 long long newD = (long long)dist[p] + w; // evitare overflow
                 if (newD < bestDist) {
@@ -119,6 +121,7 @@ void RamalingamReps::handleEdgeUpdate(int u, int v, int newWeight) {
         q_inval.push(v);
         // BFS uses queue ops, not heap ops. Not counting as heap_ops.
         affected.push_back(v);
+        Stats::affected_nodes++; // BENCHMARK: Node distance changed
 
         while(!q_inval.empty()){
             int curr = q_inval.front(); 
@@ -127,12 +130,14 @@ void RamalingamReps::handleEdgeUpdate(int u, int v, int newWeight) {
 
             for(auto& edge : graph.adj[curr]){
                 int succ = edge.first;
+                Stats::scanned_edges++; // BENCHMARK: Edge examined
                 // Se succ è figlio di curr nell'albero dei cammini minimi, va invalidato
                 if(parent[succ] == curr){
                     dist[succ] = INF; 
                     parent[succ] = -1;
                     q_inval.push(succ);
                     affected.push_back(succ);
+                    Stats::affected_nodes++; // BENCHMARK: Node distance changed
                 }
             }
         }
@@ -166,6 +171,7 @@ void RamalingamReps::handleEdgeUpdate(int u, int v, int newWeight) {
         for (auto& edge : graph.adj[curr]) {
             int succ = edge.first;
             int w = edge.second;
+            Stats::scanned_edges++; // BENCHMARK: Edge examined
 
             if (dist[curr] != INF && dist[curr] + w < dist[succ]) {
                 dist[succ] = dist[curr] + w;
@@ -173,6 +179,7 @@ void RamalingamReps::handleEdgeUpdate(int u, int v, int newWeight) {
                 pq.push({dist[succ], succ});
                 Stats::heap_ops++; // BENCHMARK INSTRUMENTATION
                 Stats::relaxed_edges++; // BENCHMARK INSTRUMENTATION
+                Stats::affected_nodes++; // BENCHMARK: Node distance changed
             }
         }
     }
@@ -214,12 +221,14 @@ void RamalingamReps::handleEdgeInsertion(int u, int v, int w) {
         for (auto& edge : graph.adj[curr]) {
             int succ = edge.first;
             int weight = edge.second;
+            Stats::scanned_edges++; // BENCHMARK: Edge examined
             if (dist[curr] != INF && dist[curr] + weight < dist[succ]) {
                 dist[succ] = dist[curr] + weight;
                 parent[succ] = curr;
                 pq.push({dist[succ], succ});
                 Stats::heap_ops++; // BENCHMARK INSTRUMENTATION
                 Stats::relaxed_edges++; // BENCHMARK INSTRUMENTATION
+                Stats::affected_nodes++; // BENCHMARK: Node distance changed
             }
         }
     }
@@ -253,6 +262,7 @@ void RamalingamReps::handleEdgeDeletion(int u, int v) {
     parent[v] = -1;
     q_inval.push(v);
     affected.push_back(v);
+    Stats::affected_nodes++; // BENCHMARK: Node distance changed
 
     while(!q_inval.empty()){
         int curr = q_inval.front(); 
@@ -261,11 +271,13 @@ void RamalingamReps::handleEdgeDeletion(int u, int v) {
 
         for(auto& edge : graph.adj[curr]){
             int succ = edge.first;
+            Stats::scanned_edges++; // BENCHMARK: Edge examined
             if(parent[succ] == curr){
                 dist[succ] = INF; 
                 parent[succ] = -1;
                 q_inval.push(succ);
                 affected.push_back(succ);
+                Stats::affected_nodes++; // BENCHMARK: Node distance changed
             }
         }
     }
@@ -295,12 +307,14 @@ void RamalingamReps::handleEdgeDeletion(int u, int v) {
         for (auto& edge : graph.adj[curr]) {
             int succ = edge.first;
             int weight = edge.second;
+            Stats::scanned_edges++; // BENCHMARK: Edge examined
             if (dist[curr] != INF && dist[curr] + weight < dist[succ]) {
                 dist[succ] = dist[curr] + weight;
                 parent[succ] = curr;
                 pq.push({dist[succ], succ});
                 Stats::heap_ops++; // BENCHMARK INSTRUMENTATION
                 Stats::relaxed_edges++; // BENCHMARK INSTRUMENTATION
+                Stats::affected_nodes++; // BENCHMARK: Node distance changed
             }
         }
     }

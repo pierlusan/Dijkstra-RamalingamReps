@@ -48,6 +48,7 @@ void DijkstraSolver::compute(int source) {
         for (auto& edge : graph.adj[u]) {
             int v = edge.first;
             int weight = edge.second;
+            Stats::scanned_edges++; // BENCHMARK: Edge examined
 
             if (dist[u] != INF && dist[u] + weight < dist[v]) {
                 dist[v] = dist[u] + weight;
