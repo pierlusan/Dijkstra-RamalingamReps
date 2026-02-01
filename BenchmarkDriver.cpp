@@ -63,7 +63,7 @@ public:
 // Redefining wrapper to store source properly
 class DijkstraWrapperImpl : public ISSSPWrapper {
     Graph& graph;
-    std::unique_ptr<DijkstraSolver> solver;
+    std::unique_ptr<DijkstraSolver> solver; 
     int current_source = 0;
 public:
     DijkstraWrapperImpl(Graph& g) : graph(g) {
@@ -340,7 +340,7 @@ void run_benchmark_for_graph(const std::string& filepath, int K_updates, const s
     
     for (int k = 0; k < K_updates; ++k) {
         UpdateCase uc = generateUpdate(g_static, rng, magnitudeOpt);
-        
+        //std::cerr << "update generati"<< std::endl;
         // --- Static Measurement ---
         Stats::reset();
         auto startS = std::chrono::high_resolution_clock::now();

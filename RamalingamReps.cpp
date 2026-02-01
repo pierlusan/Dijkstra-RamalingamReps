@@ -69,6 +69,7 @@ void RamalingamReps::stabilize() {
             // Over-consistent: lower dist to match rhs
             dist[u] = rhs[u];
             Stats::affected_nodes++; // BENCHMARK: Node distance changed
+            Stats::affected_edges += graph.adj[u].size() + graph.rev_adj[u].size(); // ||δ||: incident edges
             
             // Update all successors' rhs values
             for (auto& edge : graph.adj[u]) {
@@ -88,11 +89,11 @@ void RamalingamReps::stabilize() {
                 }
             }
         } else {
-            // Under-consistent: dist[u] < rhs[u]
             // Set dist to INF and re-evaluate
             dist[u] = INF;
             parent[u] = -1;
             Stats::affected_nodes++; // BENCHMARK: Node distance changed
+            Stats::affected_edges += graph.adj[u].size() + graph.rev_adj[u].size(); // ||δ||: incident edges
             
             // Re-check u itself after setting dist to INF
             updateRhs(u);

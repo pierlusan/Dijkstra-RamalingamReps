@@ -28,6 +28,9 @@ struct Stats {
     
     // Number of nodes whose distance changed after an update (for dynamic algorithms)
     static inline std::atomic<long long> affected_nodes{0};
+    
+    // Number of edges incident to affected nodes (for ||δ|| calculation)
+    static inline std::atomic<long long> affected_edges{0};
 
     static void reset() {
         heap_ops = 0;
@@ -35,6 +38,7 @@ struct Stats {
         visited_nodes = 0;
         relaxed_edges = 0;
         affected_nodes = 0;
+        affected_edges = 0;
     }
 };
 

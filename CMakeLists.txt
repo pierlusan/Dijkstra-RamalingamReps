@@ -33,3 +33,15 @@ add_executable(scientific_benchmark BenchmarkDriver.cpp
         RamalingamReps.h
         BenchmarkStats.h)
 target_link_libraries(scientific_benchmark PRIVATE ZLIB::ZLIB)
+
+# Test Ramalingam-Reps complessità O(||δ|| log ||δ||)
+add_executable(test_ramalingam test_ramalingam.cpp
+        DijkstraSolver.cpp
+        DijkstraSolver.h
+        Graph.cpp
+        Graph.h
+        RamalingamReps.cpp
+        RamalingamReps.h
+        BenchmarkStats.h)
+target_link_libraries(test_ramalingam PRIVATE ZLIB::ZLIB)
+

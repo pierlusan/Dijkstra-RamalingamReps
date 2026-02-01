@@ -26,6 +26,7 @@ grafi/
 
 results.csv
 plots/
+dijkstra_results/
 
 Dijkstra
 benchmark
