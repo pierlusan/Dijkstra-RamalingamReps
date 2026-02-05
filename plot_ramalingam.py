@@ -63,14 +63,32 @@ def main():
     ax2.legend()
     ax2.grid(True, alpha=0.3)
     
-    # Plot 3: Distribuzione ||δ||
+    # Plot 3: Distribuzione ||δ|| per Categorie (Bar Chart)
     ax3 = axes[1, 0]
-    ax3.hist(df['delta_size'], bins=30, color='orange', edgecolor='black', alpha=0.7)
-    ax3.set_xlabel('||δ||', fontsize=12)
-    ax3.set_ylabel('Frequenza', fontsize=12)
-    ax3.set_title('Distribuzione di ||δ||', fontsize=14)
-    ax3.set_xscale('log')
-    ax3.grid(True, alpha=0.3)
+    
+    # Definisci bin e etichette
+    bins = [0, 10, 100, 1000, 10000, float('inf')]
+    labels = ['Tiny\n(<10)', 'Small\n(10-100)', 'Medium\n(100-1k)', 'Large\n(1k-10k)', 'Massive\n(>10k)']
+    
+    # Crea categorie e conta
+    df['category'] = pd.cut(df['delta_size'], bins=bins, labels=labels, right=False)
+    counts = df['category'].value_counts().sort_index()
+    
+    # Plot bars
+    bars = ax3.bar(labels, counts, color=['#cec2eb', '#b5a3e1', '#9c84d7', '#8265cc', '#6946c2'], 
+                  edgecolor='black', alpha=0.8)
+    
+    # Aggiungi etichette sopra le barre
+    for bar in bars:
+        height = bar.get_height()
+        if height > 0:
+            ax3.text(bar.get_x() + bar.get_width()/2., height,
+                    f'{int(height)}',
+                    ha='center', va='bottom')
+    
+    ax3.set_ylabel('Numero di Update', fontsize=12)
+    ax3.set_title('Distribuzione Dimensione Update (||δ||)', fontsize=14)
+    ax3.grid(True, axis='y', alpha=0.3)
     
     # Plot 4: Riepilogo
     ax4 = axes[1, 1]

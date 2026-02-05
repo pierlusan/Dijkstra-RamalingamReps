@@ -1,7 +1,3 @@
-//
-// Created by pierluca on 12/26/25.
-//
-
 #include "DijkstraSolver.h"
 #include <queue>
 #include <algorithm> // per reverse
@@ -27,9 +23,7 @@ void DijkstraSolver::compute(int source) {
                         std::vector<std::pair<int, int>>, 
                         std::greater<std::pair<int, int>>> pq;
 
-    // pq.push({0, source});
-    // Cost doesn't count for initial push usually, but let's be consistent or just count pop/decreases.
-    // User asked for "push/pop/decrease".
+   
     pq.push({0, source});
     Stats::heap_ops++; // BENCHMARK INSTRUMENTATION: Push
 

@@ -18,21 +18,42 @@ cmake --build build --target scientific_benchmark -j4
 
 ## 1. Test Dijkstra - Complessità O(m log n)
 
+### Generazione Grafi
+Lo script genera tre tipologie di grafi (Sparsi uniformi, Scale-free/Barabasi, Densi) nelle rispettive cartelle.
 ```bash
-# Esegue doubling experiment (n = 1K → 1M)
-./build/dijkstra_main
-
-# Verifica correttezza con networkx
-python3 verify_dijkstra.py
-
-# Genera grafici
-python3 plot_dijkstra.py
+# Compila ed esegui il generatore
+g++ -O3 -std=c++17 -o graph_generator graph_generator.cpp Graph.cpp -lz
+./graph_generator
 ```
 
-**Output:**
-- `dijkstra_doubling.csv` - tempi
-- `dijkstra_results/` - grafi e distanze
-- `plots/dijkstra_complexity.png`
+### Esecuzione Benchmark
+Il driver accetta come argomento la cartella contenente i grafi da testare.
+```bash
+# Compila il driver
+g++ -O3 -std=c++17 -o main main.cpp Graph.cpp DijkstraSolver.cpp -lz
+
+# Esegui benchmark (redirigi output su file CSV se desiderato per i plot)
+./main grafi_sparsi > dijkstra_sparsi.csv
+./main grafi_barabasi > dijkstra_barabasi.csv
+./main grafi_densi > dijkstra_densi.csv
+```
+*Nota: I file contenenti le distanze calcolate (`distances_n*.csv`) vengono salvati automaticamente nelle cartelle dei grafi.*
+
+### Verifica Correttezza
+Confronta i risultati di Dijkstra C++ con `networkx`. Richiede come argomento la cartella dei grafi.
+```bash
+# Assicurati che lo script sia eseguibile
+chmod +x verify_dijkstra.py
+
+./verify_dijkstra.py grafi_sparsi
+./verify_dijkstra.py grafi_barabasi
+./verify_dijkstra.py grafi_densi
+```
+
+### Plot Risultati
+```bash
+python3 plot_dijkstra.py
+```
 
 ---
 

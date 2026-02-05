@@ -124,5 +124,10 @@ if __name__ == "__main__":
         print("Installa con: pip install networkx")
         sys.exit(1)
     
-    success = verify_results()
+    results_dir = "dijkstra_results"
+    if len(sys.argv) > 1:
+        results_dir = sys.argv[1]
+        
+    print(f"Verifica risultati in: {results_dir}")
+    success = verify_results(results_dir)
     sys.exit(0 if success else 1)

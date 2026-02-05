@@ -27,7 +27,18 @@ grafi/
 results.csv
 plots/
 dijkstra_results/
+grafi_barabasi/
+grafi_densi/
+grafi_sparsi/
+dijkstra_barabasi.csv
+dijkstra_densi.csv
+dijkstra_sparsi.csv
+dijkstra_results.csv
+main
 
 Dijkstra
 benchmark
 benchmark_driver
+results_scientific.csv
+dijkstra_doubling.csv
+correctness_results.csv

@@ -1,49 +1,17 @@
-
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include <random>
-#include <ctime>
-#include <cmath>
+#include <string>
+#include <algorithm>
+#include <filesystem>
+#include <regex>
 #include <iomanip>
-#include <sstream>
+#include <cmath>
+#include <ctime>
 #include "Graph.h"
 #include "DijkstraSolver.h"
 
-// Genera un grafo random sparso con n nodi e m = 4n archi
-// Pesi random in [1, maxWeight]
-void generateRandomGraph(Graph& g, int n, std::mt19937& rng, int maxWeight = 1000) {
-    std::uniform_int_distribution<int> nodeDist(0, n - 1);
-    std::uniform_int_distribution<int> weightDist(1, maxWeight);
-    
-    int m = 4 * n; // Grafo sparso: m = O(n)
-    
-    for (int i = 0; i < m; ++i) {
-        int u = nodeDist(rng);
-        int v = nodeDist(rng);
-        if (u != v) { // Evita self-loop
-            int w = weightDist(rng);
-            g.addEdge(u, v, w);
-        }
-    }
-}
-
-// Salva il grafo in formato leggibile da Python (compatibile con fuzzing_oracle.py)
-// Formato: prima riga = numero nodi, righe successive = "u v w"
-void saveGraphToFile(Graph& g, const std::string& filename) {
-    std::ofstream out(filename);
-    out << g.numVertices << std::endl;
-    for (int u = 0; u < g.numVertices; ++u) {
-        for (auto& edge : g.adj[u]) {
-            int v = edge.first;
-            int w = edge.second;
-            out << u << " " << v << " " << w << std::endl;
-        }
-    }
-    out.close();
-}
-
-
+namespace fs = std::filesystem;
 
 // Esegue Dijkstra, misura CPU time e salva le distanze
 // Ritorna tempo in microsecondi
@@ -79,53 +47,101 @@ long long measureCPUTime(Graph& g, int source) {
     return static_cast<long long>((end - start) * 1e6 / CLOCKS_PER_SEC);
 }
 
-int main() {
-    std::cout << "=== DOUBLING EXPERIMENT: Dijkstra O(m log n) ===" << std::endl;
-    std::cout << "Configurazione: m = 4n (grafo sparso)" << std::endl << std::endl;
-    
-    // Range di n: 1K -> 1M (potenze di 2)
-    std::vector<int> sizes = {1000, 2000, 4000, 8000, 16000, 32000, 
-                               64000, 128000, 256000, 512000, 1024000};
-    
-    // Seed fisso per riproducibilità
-    std::mt19937 rng(42);
-    
+// Helper per estrarre il numero di nodi dal nome file (es. graph_n1000.txt -> 1000)
+// Se non riesce, ritorna 0
+int extractN(const std::string& filename) {
+    std::regex re("n(\\d+)");
+    std::smatch match;
+    if (std::regex_search(filename, match, re)) {
+        return std::stoi(match[1].str());
+    }
+    return 0;
+}
+
+int main(int argc, char* argv[]) {
+    if (argc < 2) {
+        std::cerr << "Uso: " << argv[0] << " <directory_grafi>" << std::endl;
+        return 1;
+    }
+
+    std::string directoryPath = argv[1];
+    if (!fs::exists(directoryPath) || !fs::is_directory(directoryPath)) {
+        std::cerr << "Errore: " << directoryPath << " non è una directory valida." << std::endl;
+        return 1;
+    }
+
+    std::cout << "=== DIJKSTRA BENCHMARK ===" << std::endl;
+    std::cout << "Leggendo grafi da: " << directoryPath << std::endl << std::endl;
+
+    // Raccogli file e ordinali per n
+    struct GraphFile {
+        std::string path;
+        std::string name;
+        int n;
+    };
+    std::vector<GraphFile> files;
+
+    for (const auto& entry : fs::directory_iterator(directoryPath)) {
+        if (entry.path().extension() == ".txt") {
+            std::string filename = entry.path().filename().string();
+            int n = extractN(filename);
+            files.push_back({entry.path().string(), filename, n});
+        }
+    }
+
+    // Ordina per n crescente
+    std::sort(files.begin(), files.end(), [](const GraphFile& a, const GraphFile& b) {
+        return a.n < b.n;
+    });
+
+    if (files.empty()) {
+        std::cerr << "Nessun file .txt trovato in " << directoryPath << std::endl;
+        return 1;
+    }
+
     // Crea directory per risultati
     system("mkdir -p dijkstra_results");
     
     // Apri file CSV per output tempi
-    std::ofstream csv("dijkstra_doubling.csv");
-    csv << "n,m,time_us,ratio,expected_ratio" << std::endl;
+    std::ofstream csv("dijkstra_results.csv");
+    csv << "n,m,time_us,ratio,expected_ratio,filename" << std::endl;
     
     // Stampa header tabella
     std::cout << std::setw(10) << "n" 
               << std::setw(12) << "m" 
               << std::setw(15) << "time (µs)"
               << std::setw(12) << "ratio"
-              << std::setw(15) << "expected" << std::endl;
-    std::cout << std::string(64, '-') << std::endl;
-    
+              << std::setw(15) << "expected" 
+              << "   filename" << std::endl;
+    std::cout << std::string(80, '-') << std::endl;
+
     long long prevTime = 0;
     int prevN = 0;
-    
-    for (int n : sizes) {
-        int m = 4 * n;
-        
-        // Crea e popola grafo
-        Graph g(n);
-        generateRandomGraph(g, n, rng);
-        
-        // Salva grafo per verifica con Python/networkx
-        std::ostringstream graphFileName;
-        graphFileName << "dijkstra_results/graph_n" << n << ".txt";
-        saveGraphToFile(g, graphFileName.str());
-        
+
+    for (const auto& file : files) {
+        Graph g(1); // Inizializza con 1 nodo dummy (0 non è permesso dal costruttore)
+        try {
+            g.loadFromFile(file.path);
+        } catch (const std::exception& e) {
+            std::cerr << "Errore caricamento " << file.name << ": " << e.what() << std::endl;
+            continue;
+        }
+
+        int n = g.numVertices;
+        // Conta archi
+        long long m = 0;
+        for(const auto& list : g.adj) m += list.size();
+
         // Prima run: salva risultati per verifica correttezza
+        // Salva nella stessa cartella dei grafi: directoryPath/distances_n{n}.csv
         std::ostringstream distFileName;
-        distFileName << "dijkstra_results/distances_n" << n << ".csv";
+        // Costruisci path: directoryPath + / + distances_n + n + .csv
+        // Gestisci slash finale se presente o meno
+        std::string dir = directoryPath;
+        if (dir.back() != '/') dir += "/";
+        distFileName << dir << "distances_n" << n << ".csv";
         long long firstTime = runDijkstraAndSave(g, 0, distFileName.str());
 
-        
         // Run aggiuntivi per media (senza salvare)
         int totalRuns = 3;
         long long totalTime = firstTime;
@@ -133,15 +149,21 @@ int main() {
             totalTime += measureCPUTime(g, 0);
         }
         long long avgTime = totalTime / totalRuns;
-        
+
         // Calcola ratio
         double ratio = (prevTime > 0) ? static_cast<double>(avgTime) / prevTime : 0;
         
-        // Calcola ratio atteso: 2 * log(2n) / log(n) per O(n log n)
-        double expectedRatio = (prevN > 0) 
-            ? 2.0 * std::log(static_cast<double>(n)) / std::log(static_cast<double>(prevN))
-            : 0;
-        
+        // Calcola ratio atteso: O(m log n) o O(m + n log n) a seconda dell'implementazione
+        // Assumiamo O(m log n) per semplicità come nel codice precedente
+        double expectedRatio = 0.0;
+        if (prevN > 0) {
+           // Usiamo n come proxy se m scala con n, altrimenti è approssimativo
+           // ratio ~ (m * log n) / (prev_m * log prev_n)
+           // Qui non abbiamo prev_m facilmente accessibile senza salvarlo. 
+           // Usiamo la formula semplificata basata solo su N se m ~ kN
+           expectedRatio = 2.0 * std::log(static_cast<double>(n)) / std::log(static_cast<double>(prevN));
+        }
+
         // Stampa riga
         std::cout << std::setw(10) << n 
                   << std::setw(12) << m 
@@ -153,28 +175,26 @@ int main() {
         } else {
             std::cout << std::setw(12) << "-" << std::setw(15) << "-";
         }
-        std::cout << std::endl;
-        
+        std::cout << "   " << file.name << std::endl;
+
         // Scrivi CSV
         csv << n << "," << m << "," << avgTime << ",";
         if (prevTime > 0) {
             csv << std::fixed << std::setprecision(3) << ratio << ","
-                << std::fixed << std::setprecision(3) << expectedRatio;
+                << std::fixed << std::setprecision(3) << expectedRatio << ",";
         } else {
-            csv << "-,-";
+            csv << "-,-,";
         }
-        csv << std::endl;
-        
+        csv << file.name << std::endl;
+
         prevTime = avgTime;
         prevN = n;
     }
-    
+
     csv.close();
-    
     std::cout << std::endl;
-    std::cout << "Risultati tempi salvati in: dijkstra_doubling.csv" << std::endl;
-    std::cout << "Distanze salvate in: dijkstra_results/distances_n*.csv" << std::endl;
-    std::cout << "\nPer plottare i risultati: python3 plot_dijkstra.py" << std::endl;
-    
+    std::cout << "Tempi salvati in: dijkstra_results.csv" << std::endl;
+    std::cout << "Distanze salvate in: dijkstra_results/distances_*.csv" << std::endl;
+
     return 0;
 }

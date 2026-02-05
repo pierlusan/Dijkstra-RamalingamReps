@@ -1,16 +1,3 @@
-/**
- * BenchmarkDriver.cpp
- * 
- * Scientific Benchmarking Framework for SSSP Algorithms.
- * Loads graphs from files in a folder and compares Static vs Dynamic algorithms.
- * 
- * Usage: ./benchmark <folder_path>
- * 
- * Supported formats:
- *  - .txt: First line = N (num vertices), then lines of "u v w" edges
- *  - .gr (DIMACS): "p sp N M" header, "a u v w" edges
- */
-
 #include <iostream>
 #include <vector>
 #include <fstream>
@@ -33,6 +20,9 @@ struct Edge {
     long long w;
 };
 
+// I wrapper unificano l'interfaccia per algoritmi statici e dinamici (Adapter Pattern),
+// permettendo al benchmark di testarli in modo intercambiabile. I wrapper statici gestiscono
+// gli aggiornamenti ricalcolando da zero, mentre quelli dinamici usano la loro logica incrementale.
 class ISSSPWrapper {
 public:
     virtual ~ISSSPWrapper() = default;
@@ -50,10 +40,6 @@ public:
     
     virtual std::string getName() const = 0;
 };
-
-// --- Concrete Wrappers (Placeholders for User Implementation) ---
-
-// --- Concrete Wrappers (Placeholders for User Implementation) ---
 
 #include "DijkstraSolver.h"
 #include "RamalingamReps.h"
@@ -129,7 +115,7 @@ public:
 };
 
 
-
+// per non riscriverlo ogni volta per intero
 namespace fs = std::filesystem;
 
 // --- Graph Loading Utilities ---
@@ -334,7 +320,7 @@ void run_benchmark_for_graph(const std::string& filepath, int K_updates, const s
     staticAlgo.init(source_node);
     dynAlgo.init(source_node);
     
-    std::mt19937 rng(12345); // Benchmark loop rng
+    std::mt19937 rng(12345); // Benchmark loop rng, seed fisso per riproducibilità, servirà per generare gli update
     
     std::cerr << "  Running " << K_updates << " updates..." << std::endl;
     
@@ -371,7 +357,8 @@ void run_benchmark_for_graph(const std::string& filepath, int K_updates, const s
         long long relaxed_dyn = Stats::relaxed_edges;
         long long affected_dyn = Stats::affected_nodes;
         
-        // --- Validation (sample 10 random nodes) ---
+
+        // Validazione, prendo 10 nodi a caso e controllo che le distanze siano uguali (da eliminare in futuro)
         for (int i = 0; i < 10; ++i) {
             std::uniform_int_distribution<int> checkDist(0, N - 1);
             int node = checkDist(rng);
@@ -382,6 +369,7 @@ void run_benchmark_for_graph(const std::string& filepath, int K_updates, const s
             }
         }
         
+        // Calcolo speedup
         double speedup = (t_dyn > 0) ? (double)t_static / t_dyn : 0.0;
         
         std::cout << N << "," << M << "," << k << "," 
@@ -428,8 +416,10 @@ void run_benchmark_suite(const std::string& folder_path, int K_updates, const st
 }
 
 int main(int argc, char* argv[]) {
-    // Fast IO
+    // Fast IO: Ottimizza drasticamente la velocità di Input/Output
+    // Disabilita la sincronizzazione con gli stream C (printf/scanf) per performance
     std::ios_base::sync_with_stdio(false);
+    // Slega cin da cout: evita il flush automatico del buffer di output ad ogni input (utile per grandi letture)
     std::cin.tie(NULL);
     
     if (argc < 2) {

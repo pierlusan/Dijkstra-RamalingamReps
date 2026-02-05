@@ -11,7 +11,7 @@ import os
 
 def main():
     # Leggi dati
-    df = pd.read_csv('dijkstra_doubling.csv')
+    df = pd.read_csv('dijkstra_densi.csv')
     
     # Converti '-' a NaN per i ratio
     df['ratio'] = pd.to_numeric(df['ratio'], errors='coerce')
