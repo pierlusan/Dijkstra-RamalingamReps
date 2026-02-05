@@ -84,6 +84,12 @@ def verify_results(results_dir: str = "dijkstra_results"):
         if not dist_file.exists():
             print(f"{n:>10} | {'?':>15} | {'?':>8} | {'SKIP - no dist file':>10}")
             continue
+
+        # Controllo dimensione file per evitare crash (NetworkX usa molta RAM)
+        file_size_mb = graph_file.stat().st_size / (1024 * 1024)
+        if file_size_mb > 200:
+            print(f"{n:>10} | {'?':>15} | {'?':>8} | {f'SKIP - too large ({file_size_mb:.0f}MB)':>10}")
+            continue
         
         # Carica grafo e distanze C++
         G = load_graph_from_file(str(graph_file))

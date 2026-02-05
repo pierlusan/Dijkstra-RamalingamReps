@@ -151,7 +151,7 @@ int main() {
     // Per grafi densi: più piccoli (m = O(n²))
     std::vector<int> sizes_sparse = {1000, 2000, 4000, 8000, 16000, 32000, 
                                       64000, 128000, 256000, 512000, 1024000};
-    std::vector<int> sizes_dense = {500, 1000, 2000, 4000, 8000, 16000};
+    std::vector<int> sizes_dense = {500, 1000, 1100, 2000, 2100, 4000};
 
     // Parametro Barabási-Albert: numero di archi per nuovo nodo
     int m_attach = 4;  // Così m ≈ 4n come nei grafi sparsi uniformi

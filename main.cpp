@@ -70,8 +70,8 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    std::cout << "=== DIJKSTRA BENCHMARK ===" << std::endl;
-    std::cout << "Leggendo grafi da: " << directoryPath << std::endl << std::endl;
+    std::cerr << "=== DIJKSTRA BENCHMARK ===" << std::endl;
+    std::cerr << "Leggendo grafi da: " << directoryPath << std::endl << std::endl;
 
     // Raccogli file e ordinali per n
     struct GraphFile {
@@ -102,18 +102,17 @@ int main(int argc, char* argv[]) {
     // Crea directory per risultati
     system("mkdir -p dijkstra_results");
     
-    // Apri file CSV per output tempi
-    std::ofstream csv("dijkstra_results.csv");
-    csv << "n,m,time_us,ratio,expected_ratio,filename" << std::endl;
+    // Stampa output CSV su stdout
+    std::cout << "n,m,time_us,ratio,expected_ratio,filename" << std::endl;
     
-    // Stampa header tabella
-    std::cout << std::setw(10) << "n" 
+    // Stampa header tabella su stderr
+    std::cerr << std::setw(10) << "n" 
               << std::setw(12) << "m" 
               << std::setw(15) << "time (µs)"
               << std::setw(12) << "ratio"
               << std::setw(15) << "expected" 
               << "   filename" << std::endl;
-    std::cout << std::string(80, '-') << std::endl;
+    std::cerr << std::string(80, '-') << std::endl;
 
     long long prevTime = 0;
     int prevN = 0;
@@ -154,47 +153,40 @@ int main(int argc, char* argv[]) {
         double ratio = (prevTime > 0) ? static_cast<double>(avgTime) / prevTime : 0;
         
         // Calcola ratio atteso: O(m log n) o O(m + n log n) a seconda dell'implementazione
-        // Assumiamo O(m log n) per semplicità come nel codice precedente
         double expectedRatio = 0.0;
         if (prevN > 0) {
-           // Usiamo n come proxy se m scala con n, altrimenti è approssimativo
-           // ratio ~ (m * log n) / (prev_m * log prev_n)
-           // Qui non abbiamo prev_m facilmente accessibile senza salvarlo. 
-           // Usiamo la formula semplificata basata solo su N se m ~ kN
            expectedRatio = 2.0 * std::log(static_cast<double>(n)) / std::log(static_cast<double>(prevN));
         }
 
-        // Stampa riga
-        std::cout << std::setw(10) << n 
+        // Stampa riga tabella su stderr
+        std::cerr << std::setw(10) << n 
                   << std::setw(12) << m 
                   << std::setw(15) << avgTime;
         
         if (prevTime > 0) {
-            std::cout << std::setw(12) << std::fixed << std::setprecision(2) << ratio
+            std::cerr << std::setw(12) << std::fixed << std::setprecision(2) << ratio
                       << std::setw(15) << std::fixed << std::setprecision(2) << expectedRatio;
         } else {
-            std::cout << std::setw(12) << "-" << std::setw(15) << "-";
+            std::cerr << std::setw(12) << "-" << std::setw(15) << "-";
         }
-        std::cout << "   " << file.name << std::endl;
+        std::cerr << "   " << file.name << std::endl;
 
-        // Scrivi CSV
-        csv << n << "," << m << "," << avgTime << ",";
+        // Scrivi riga CSV su stdout
+        std::cout << n << "," << m << "," << avgTime << ",";
         if (prevTime > 0) {
-            csv << std::fixed << std::setprecision(3) << ratio << ","
-                << std::fixed << std::setprecision(3) << expectedRatio << ",";
+            std::cout << std::fixed << std::setprecision(3) << ratio << ","
+                      << std::fixed << std::setprecision(3) << expectedRatio << ",";
         } else {
-            csv << "-,-,";
+            std::cout << "-,-,";
         }
-        csv << file.name << std::endl;
+        std::cout << file.name << std::endl;
 
         prevTime = avgTime;
         prevN = n;
     }
 
-    csv.close();
-    std::cout << std::endl;
-    std::cout << "Tempi salvati in: dijkstra_results.csv" << std::endl;
-    std::cout << "Distanze salvate in: dijkstra_results/distances_*.csv" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "Distanze salvate in: " << directoryPath << "/distances_*.csv" << std::endl;
 
     return 0;
 }

@@ -42,3 +42,6 @@ benchmark_driver
 results_scientific.csv
 dijkstra_doubling.csv
 correctness_results.csv
+risultati_barabasi/
+risultati_densi/
+risultati_sparsi/

@@ -33,14 +33,16 @@ Il driver accetta come argomento la cartella contenente i grafi da testare.
 g++ -O3 -std=c++17 -o main main.cpp Graph.cpp DijkstraSolver.cpp -lz
 
 # Esegui benchmark (redirigi output su file CSV se desiderato per i plot)
-./main grafi_sparsi > dijkstra_sparsi.csv
-./main grafi_barabasi > dijkstra_barabasi.csv
-./main grafi_densi > dijkstra_densi.csv
+./main grafi_sparsi > risultati_sparsi/dijkstra_sparsi.csv
+./main grafi_barabasi > risultati_barabasi/dijkstra_barabasi.csv
+./main grafi_densi > risultati_densi/dijkstra_densi.csv
 ```
 *Nota: I file contenenti le distanze calcolate (`distances_n*.csv`) vengono salvati automaticamente nelle cartelle dei grafi.*
 
 ### Verifica Correttezza
 Confronta i risultati di Dijkstra C++ con `networkx`. Richiede come argomento la cartella dei grafi.
+*Nota: lo script salta automaticamente i file grafi > 200MB (es. grafi densi molto grandi) per evitare crash dovuti all'eccessivo consumo di RAM di Python.*
+
 ```bash
 # Assicurati che lo script sia eseguibile
 chmod +x verify_dijkstra.py
@@ -51,8 +53,13 @@ chmod +x verify_dijkstra.py
 ```
 
 ### Plot Risultati
+Lo script richiede il file CSV dei risultati come argomento. Il grafico verrà salvato nella stessa cartella del CSV.
+
 ```bash
-python3 plot_dijkstra.py
+# Esempi
+python3 plot_dijkstra.py risultati_densi/dijkstra_densi.csv
+python3 plot_dijkstra.py risultati_sparsi/dijkstra_sparsi.csv
+python3 plot_dijkstra.py risultati_barabasi/dijkstra_barabasi.csv
 ```
 
 ---

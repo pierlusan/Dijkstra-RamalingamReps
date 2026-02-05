@@ -123,7 +123,7 @@ void Graph::loadFromFile(const std::string& filename) {
     }
 
     infile.close();
-    std::cout << "Grafo caricato da " << filename << " con " << numVertices << " vertici." << std::endl;
+    std::cerr << "Grafo caricato da " << filename << " con " << numVertices << " vertici." << std::endl;
 }
 
 void Graph::printGraph() {
@@ -309,6 +309,6 @@ void Graph::loadFromDIMACS(const std::string& filename) {
     
     gzclose(file);
     
-    std::cout << "Grafo DIMACS caricato da " << filename << ": " 
+    std::cerr << "Grafo DIMACS caricato da " << filename << ": " 
               << numVertices << " nodi, " << edgesLoaded << " archi." << std::endl;
 }
