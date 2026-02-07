@@ -3,14 +3,20 @@ project(Dijkstra)
 
 set(CMAKE_CXX_STANDARD 17)
 
-# Profiling configuration
+# Build type: Release per massima efficienza (no debug symbols)
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE RelWithDebInfo)
+    set(CMAKE_BUILD_TYPE Release)
 endif()
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 
 # Trova zlib per supporto file .gz
 find_package(ZLIB REQUIRED)
+
+# Generatore grafi (sparsi, Barabási-Albert, densi)
+add_executable(graph_generator graph_generator.cpp
+        Graph.cpp
+        Graph.h)
+target_link_libraries(graph_generator PRIVATE ZLIB::ZLIB)
 
 # Eseguibile principale con doubling experiment
 add_executable(dijkstra_main main.cpp

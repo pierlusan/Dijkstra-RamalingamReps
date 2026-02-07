@@ -1,3 +1,7 @@
+//Obiettivo: 
+// Verificare che RR produca risultati corretti rispetto a Dijkstra
+// Validare la complessità O(||δ|| log ||δ||) dove ||δ|| = nodi affetti + archi incidenti
+
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -50,7 +54,7 @@ int main() {
     
     std::cout << "Caricamento grafo..." << std::endl;
     try {
-        g.loadFromDIMACS(graphPath);
+        g.loadFromDIMACS(graphPath); // carica il grafo
     } catch (const std::exception& e) {
         std::cerr << "Errore caricamento: " << e.what() << std::endl;
         return 1;
@@ -69,10 +73,11 @@ int main() {
     std::vector<std::tuple<int, int, int, int>> testEdges; // (u, v, weight, dist_from_source)
     
     DijkstraSolver dijkstra(g);
-    dijkstra.compute(source);
+    dijkstra.compute(source); // calcola distanze con Dijkstra per riferimento
     
-    std::mt19937 rng(42);
+    std::mt19937 rng(42); // seed
     
+    // Raccoglie tutti gli archi con distanza finita dalla sorgente 
     for (int u = 0; u < g.numVertices; ++u) {
         int distU = dijkstra.getDistance(u);
         if (distU == INF) continue;
@@ -118,15 +123,15 @@ int main() {
     std::cout << std::string(65, '-') << std::endl;
     
     int passed = 0, failed = 0;
-    int opCounts[4] = {0, 0, 0, 0};
+    int opCounts[4] = {0, 0, 0, 0}; // conta operazioni per tipo
     
     for (size_t i = 0; i < selectedEdges.size(); ++i) {
         auto [u, v, origW, distFromSource] = selectedEdges[i];
         
-        // Determina tipo di operazione (ciclo tra i 4 tipi)
+        // Determina tipo di operazione (ciclo tra i 4 tipi). Li alterna in ordine
         OpType opType = static_cast<OpType>(i % 4);
         
-        int currentW = g.getEdgeWeight(u, v);
+        int currentW = g.getEdgeWeight(u, v); // peso attuale
         int newW = currentW;
         std::string opDesc;
         
@@ -159,7 +164,7 @@ int main() {
                 });
                 // Verifica dopo eliminazione
                 {
-                    bool correctAfterDel = verifyCorrectness(rr, g, source);
+                    bool correctAfterDel = verifyCorrectness(rr, g, source); // controlla se il risultato ottenuto è corretto
                     if (correctAfterDel) passed++; else failed++;
                     opCounts[opType]++;
                     
@@ -183,8 +188,8 @@ int main() {
                 }
                 // Reinserisci per ripristinare stato
                 Stats::reset();
-                rr.handleEdgeInsertion(u, v, currentW);
-                continue; // Già gestito sopra
+                rr.handleEdgeInsertion(u, v, currentW); // reinserisce l'arco
+                continue; 
                 
             case EDGE_INSERT:
                 // Inserisci un arco verso un nodo casuale vicino
@@ -241,6 +246,7 @@ int main() {
             if (correct) passed++; else failed++;
             opCounts[opType]++;
             
+            // Tempo normalizzato: verifica O(||δ|| log ||δ||)
             double normalizedTime = (deltaSize > 1) ? rr_time / (deltaSize * std::log2(deltaSize)) : 0;
             
             std::cout << std::setw(5) << (i+1)

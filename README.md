@@ -2,14 +2,17 @@
 
 ## Build
 
+Tutti i target vengono compilati con CMake in modalità **Release** (`-O3 -DNDEBUG`) per la massima efficienza.
+
 ```bash
 cd /home/pierluca/Desktop/Algorithm-Engineering/Dijkstra
 
 # Build tutti i target
-cmake -B build -S . && cmake --build build -j4
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release && cmake --build build -j4
 
 # Build singolo target
 cmake --build build --target dijkstra_main -j4
+cmake --build build --target graph_generator -j4
 cmake --build build --target test_ramalingam -j4
 cmake --build build --target scientific_benchmark -j4
 ```
@@ -21,21 +24,16 @@ cmake --build build --target scientific_benchmark -j4
 ### Generazione Grafi
 Lo script genera tre tipologie di grafi (Sparsi uniformi, Scale-free/Barabasi, Densi) nelle rispettive cartelle.
 ```bash
-# Compila ed esegui il generatore
-g++ -O3 -std=c++17 -o graph_generator graph_generator.cpp Graph.cpp -lz
-./graph_generator
+./build/graph_generator
 ```
 
 ### Esecuzione Benchmark
 Il driver accetta come argomento la cartella contenente i grafi da testare.
 ```bash
-# Compila il driver
-g++ -O3 -std=c++17 -o main main.cpp Graph.cpp DijkstraSolver.cpp -lz
-
 # Esegui benchmark (redirigi output su file CSV se desiderato per i plot)
-./main grafi_sparsi > risultati_sparsi/dijkstra_sparsi.csv
-./main grafi_barabasi > risultati_barabasi/dijkstra_barabasi.csv
-./main grafi_densi > risultati_densi/dijkstra_densi.csv
+./build/dijkstra_main grafi_sparsi > risultati_sparsi/dijkstra_sparsi.csv
+./build/dijkstra_main grafi_barabasi > risultati_barabasi/dijkstra_barabasi.csv
+./build/dijkstra_main grafi_densi > risultati_densi/dijkstra_densi.csv
 ```
 *Nota: I file contenenti le distanze calcolate (`distances_n*.csv`) vengono salvati automaticamente nelle cartelle dei grafi.*
 
@@ -44,9 +42,6 @@ Confronta i risultati di Dijkstra C++ con `networkx`. Richiede come argomento la
 *Nota: lo script salta automaticamente i file grafi > 200MB (es. grafi densi molto grandi) per evitare crash dovuti all'eccessivo consumo di RAM di Python.*
 
 ```bash
-# Assicurati che lo script sia eseguibile
-chmod +x verify_dijkstra.py
-
 ./verify_dijkstra.py grafi_sparsi
 ./verify_dijkstra.py grafi_barabasi
 ./verify_dijkstra.py grafi_densi
@@ -56,7 +51,6 @@ chmod +x verify_dijkstra.py
 Lo script richiede il file CSV dei risultati come argomento. Il grafico verrà salvato nella stessa cartella del CSV.
 
 ```bash
-# Esempi
 python3 plot_dijkstra.py risultati_densi/dijkstra_densi.csv
 python3 plot_dijkstra.py risultati_sparsi/dijkstra_sparsi.csv
 python3 plot_dijkstra.py risultati_barabasi/dijkstra_barabasi.csv
@@ -84,22 +78,22 @@ python3 plot_ramalingam.py
 
 ```bash
 # Sintassi
-./build/scientific_benchmark <folder_path> [num_updates] [magnitude]
+./build/scientific_benchmark <folder_path> [update_factor] [magnitude]
 
 # Esempi
-./build/scientific_benchmark ./grafi 100 small > results.csv
-./build/scientific_benchmark ./grafi 1000 large > results.csv
-./build/scientific_benchmark ./grafi 500 mixed > results.csv
+./build/scientific_benchmark ./grafi_vs 0.1 small > risultati_vs/results_small.csv   # 10% di N update
+./build/scientific_benchmark ./grafi_vs 0.1 large > risultati_vs/results_large.csv   # N update (Default)
+./build/scientific_benchmark ./grafi_vs 0.1 mixed > risultati_vs/results_mixed.csv   # 2*N update
 
 # Genera grafici
-python3 plot_results.py results.csv
+python3 plot_results.py risultati_vs/results_small.csv
 ```
 
 **Parametri:**
 | Parametro | Descrizione | Default |
 |-----------|-------------|---------|
 | `folder_path` | Cartella con grafi (.txt o .gr) | - |
-| `num_updates` | Numero update per grafo | 1000 |
+| `update_factor` | Moltiplicatore Update ($K = N \times factor$) | 1.0 |
 | `magnitude` | `small` (±10%), `large` (×2), `mixed` | large |
 
 **Output CSV:**
@@ -112,8 +106,9 @@ python3 plot_results.py results.csv
 
 ## Riepilogo Target
 
-| Target | Descrizione |
-|--------|-------------|
-| `dijkstra_main` | Doubling experiment Dijkstra |
-| `test_ramalingam` | Test RR con tutte le operazioni |
-| `scientific_benchmark` | Confronto Dijkstra vs RR |
+| Target                 | Descrizione                       |
+|------------------------|-----------------------------------|
+| `graph_generator`      | Generatore grafi (sparsi, BA, densi) |
+| `dijkstra_main`        | Doubling experiment Dijkstra      |
+| `test_ramalingam`      | Test RR con tutte le operazioni   |
+| `scientific_benchmark` | Confronto Dijkstra vs RR          |

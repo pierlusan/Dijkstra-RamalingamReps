@@ -18,11 +18,11 @@ namespace fs = std::filesystem;
 long long runDijkstraAndSave(Graph& g, int source, const std::string& outputFile) {
     DijkstraSolver solver(g);
     
-    std::clock_t start = std::clock();
-    solver.compute(source);
-    std::clock_t end = std::clock();
+    std::clock_t start = std::clock(); //inizio calcolo tempo
+    solver.compute(source); //calcola le distanze
+    std::clock_t end = std::clock(); //fine calcolo tempo
     
-    long long time_us = static_cast<long long>((end - start) * 1e6 / CLOCKS_PER_SEC);
+    long long time_us = static_cast<long long>((end - start) * 1e6 / CLOCKS_PER_SEC); //calcolo tempo in microsecondi
     
     // Salva distanze per verifica correttezza
     std::ofstream out(outputFile);
@@ -63,7 +63,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "Uso: " << argv[0] << " <directory_grafi>" << std::endl;
         return 1;
     }
-
+    // prendo il path della directory dei grafi
     std::string directoryPath = argv[1];
     if (!fs::exists(directoryPath) || !fs::is_directory(directoryPath)) {
         std::cerr << "Errore: " << directoryPath << " non è una directory valida." << std::endl;
@@ -81,6 +81,7 @@ int main(int argc, char* argv[]) {
     };
     std::vector<GraphFile> files;
 
+    // prendo i file .txt e li metto in files
     for (const auto& entry : fs::directory_iterator(directoryPath)) {
         if (entry.path().extension() == ".txt") {
             std::string filename = entry.path().filename().string();
@@ -114,8 +115,8 @@ int main(int argc, char* argv[]) {
               << "   filename" << std::endl;
     std::cerr << std::string(80, '-') << std::endl;
 
-    long long prevTime = 0;
-    int prevN = 0;
+    long long prevTime = 0; // tempo precedente
+    int prevN = 0; // numero di nodi precedente
 
     for (const auto& file : files) {
         Graph g(1); // Inizializza con 1 nodo dummy (0 non è permesso dal costruttore)
@@ -126,11 +127,10 @@ int main(int argc, char* argv[]) {
             continue;
         }
 
-        int n = g.numVertices;
+        int n = g.numVertices; //numero nodi
         // Conta archi
         long long m = 0;
         for(const auto& list : g.adj) m += list.size();
-
         // Prima run: salva risultati per verifica correttezza
         // Salva nella stessa cartella dei grafi: directoryPath/distances_n{n}.csv
         std::ostringstream distFileName;
@@ -152,7 +152,7 @@ int main(int argc, char* argv[]) {
         // Calcola ratio
         double ratio = (prevTime > 0) ? static_cast<double>(avgTime) / prevTime : 0;
         
-        // Calcola ratio atteso: O(m log n) o O(m + n log n) a seconda dell'implementazione
+        // Calcola ratio atteso: O(m log n)
         double expectedRatio = 0.0;
         if (prevN > 0) {
            expectedRatio = 2.0 * std::log(static_cast<double>(n)) / std::log(static_cast<double>(prevN));

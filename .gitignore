@@ -22,7 +22,9 @@ Thumbs.db
 # Output data
 output_grafi/
 venv/
-grafi/
+grafi_rr/
+grafi_vs/
+
 
 results.csv
 plots/
@@ -45,3 +47,4 @@ correctness_results.csv
 risultati_barabasi/
 risultati_densi/
 risultati_sparsi/
+risultati_vs/

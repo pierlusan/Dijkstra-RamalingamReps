@@ -1,7 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
-#include <chrono>
+#include <ctime>
 #include <random>
 #include <memory>
 #include <iomanip>
@@ -213,12 +213,12 @@ UpdateCase generateUpdate(Graph& g, std::mt19937& rng, const std::string& magnit
     std::uniform_int_distribution<int> opDist(0, 100); 
     
     while(true) {
-        int op = opDist(rng);
+        int op = opDist(rng); // Numero random 0-100
         
         // 50% Weight Update, 25% Add, 25% Delete
         
         if (op < 50) { // Weight Update
-            int u = nodeDist(rng);
+            int u = nodeDist(rng); // Numero random 0-100
             if (g.adj[u].empty()) continue;
             
             std::uniform_int_distribution<int> neighborDist(0, g.adj[u].size() - 1);
@@ -229,7 +229,7 @@ UpdateCase generateUpdate(Graph& g, std::mt19937& rng, const std::string& magnit
             UpdateCase uc;
             uc.u = u; uc.v = v; uc.oldW = w;
             
-            // Determine actual magnitude for this update
+            // se la magnitudo è mista, scelgo random
             std::string actualMag = magnitudeOpt;
             if (magnitudeOpt == "mixed") {
                 std::uniform_int_distribution<int> magDist(0, 1);
@@ -294,7 +294,7 @@ UpdateCase generateUpdate(Graph& g, std::mt19937& rng, const std::string& magnit
     }
 }
 
-void run_benchmark_for_graph(const std::string& filepath, int K_updates, const std::string& magnitudeOpt) {
+void run_benchmark_for_graph(const std::string& filepath, double update_factor, const std::string& magnitudeOpt) {
     std::string filename = fs::path(filepath).filename().string();
     
     std::cerr << "Loading graph: " << filename << std::endl;
@@ -304,15 +304,18 @@ void run_benchmark_for_graph(const std::string& filepath, int K_updates, const s
     
     std::cerr << "  Vertices: " << N << ", Edges: " << M << std::endl;
     
+    // Calcola il numero di aggiornamenti basato sulla dimensione del grafo (proporzionale a N)
+    int K_updates = std::max(1, static_cast<int>(N * update_factor));
+
     int source_node = 0;
     
-    // Setup Graphs (two copies for static and dynamic)
+    // due grafi, uno statico e uno dinamico
     Graph g_static(N);
     Graph g_dyn(N);
     buildGraph(g_static, edges);
     buildGraph(g_dyn, edges);
     
-    // Setup Wrappers
+    // due wrapper, uno statico e uno dinamico
     DijkstraWrapperImpl staticAlgo(g_static);
     RRWrapper dynAlgo(g_dyn);
     
@@ -322,35 +325,37 @@ void run_benchmark_for_graph(const std::string& filepath, int K_updates, const s
     
     std::mt19937 rng(12345); // Benchmark loop rng, seed fisso per riproducibilità, servirà per generare gli update
     
-    std::cerr << "  Running " << K_updates << " updates..." << std::endl;
+    std::cerr << "  Running " << K_updates << " updates (Factor: " << update_factor << " * N)..." << std::endl;
     
     for (int k = 0; k < K_updates; ++k) {
         UpdateCase uc = generateUpdate(g_static, rng, magnitudeOpt);
-        //std::cerr << "update generati"<< std::endl;
-        // --- Static Measurement ---
+        
+        // misura statica
         Stats::reset();
-        auto startS = std::chrono::high_resolution_clock::now();
+        struct timespec startS, endS;
+        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &startS);
         if (uc.type == "Add") staticAlgo.addEdge(uc.u, uc.v, uc.newW);
         else if (uc.type == "Del") staticAlgo.removeEdge(uc.u, uc.v);
         else staticAlgo.updateEdge(uc.u, uc.v, uc.newW);
-        auto endS = std::chrono::high_resolution_clock::now();
-        long long t_static = std::chrono::duration_cast<std::chrono::nanoseconds>(endS - startS).count();
-        // Capture all individual static metrics
+        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &endS);
+        long long t_static = (endS.tv_sec - startS.tv_sec) * 1000000000LL + (endS.tv_nsec - startS.tv_nsec);
+        // misura metriche statiche
         long long heap_static = Stats::heap_ops;
         long long scanned_static = Stats::scanned_edges;
         long long visited_static = Stats::visited_nodes;
         long long relaxed_static = Stats::relaxed_edges;
         long long affected_static = Stats::affected_nodes;
         
-        // --- Dynamic Measurement ---
+        // misura dinamica
         Stats::reset();
-        auto startD = std::chrono::high_resolution_clock::now();
+        struct timespec startD, endD;
+        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &startD);
         if (uc.type == "Add") dynAlgo.addEdge(uc.u, uc.v, uc.newW);
         else if (uc.type == "Del") dynAlgo.removeEdge(uc.u, uc.v);
         else dynAlgo.updateEdge(uc.u, uc.v, uc.newW);
-        auto endD = std::chrono::high_resolution_clock::now();
-        long long t_dyn = std::chrono::duration_cast<std::chrono::nanoseconds>(endD - startD).count();
-        // Capture all individual dynamic metrics
+        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &endD);
+        long long t_dyn = (endD.tv_sec - startD.tv_sec) * 1000000000LL + (endD.tv_nsec - startD.tv_nsec);
+        // misura metriche dinamiche
         long long heap_dyn = Stats::heap_ops;
         long long scanned_dyn = Stats::scanned_edges;
         long long visited_dyn = Stats::visited_nodes;
@@ -359,15 +364,15 @@ void run_benchmark_for_graph(const std::string& filepath, int K_updates, const s
         
 
         // Validazione, prendo 10 nodi a caso e controllo che le distanze siano uguali (da eliminare in futuro)
-        for (int i = 0; i < 10; ++i) {
-            std::uniform_int_distribution<int> checkDist(0, N - 1);
-            int node = checkDist(rng);
-            if (staticAlgo.getDistance(node) != dynAlgo.getDistance(node)) {
-                 std::cerr << "Validation Failed at Update " << k << " Node " << node << std::endl;
-                 std::cerr << "Static: " << staticAlgo.getDistance(node) << " Dyn: " << dynAlgo.getDistance(node) << std::endl;
-                 exit(1);
-            }
-        }
+        // for (int i = 0; i < 10; ++i) {
+        //     std::uniform_int_distribution<int> checkDist(0, N - 1);
+        //     int node = checkDist(rng);
+        //     if (staticAlgo.getDistance(node) != dynAlgo.getDistance(node)) {
+        //          std::cerr << "Validation Failed at Update " << k << " Node " << node << std::endl;
+        //          std::cerr << "Static: " << staticAlgo.getDistance(node) << " Dyn: " << dynAlgo.getDistance(node) << std::endl;
+        //          exit(1);
+        //     }
+        // }
         
         // Calcolo speedup
         double speedup = (t_dyn > 0) ? (double)t_static / t_dyn : 0.0;
@@ -384,7 +389,7 @@ void run_benchmark_for_graph(const std::string& filepath, int K_updates, const s
     std::cerr << "  Completed!" << std::endl;
 }
 
-void run_benchmark_suite(const std::string& folder_path, int K_updates, const std::string& magnitudeOpt) {
+void run_benchmark_suite(const std::string& folder_path, double update_factor, const std::string& magnitudeOpt) {
     std::cout << "Graph_N,Graph_M,Update_ID,Type,Magnitude,"
               << "Time_Static_ns,HeapOps_Static,ScannedEdges_Static,VisitedNodes_Static,RelaxedEdges_Static,AffectedNodes_Static,"
               << "Time_Dyn_ns,HeapOps_Dyn,ScannedEdges_Dyn,VisitedNodes_Dyn,RelaxedEdges_Dyn,AffectedNodes_Dyn,"
@@ -392,6 +397,7 @@ void run_benchmark_suite(const std::string& folder_path, int K_updates, const st
     
     std::vector<std::string> graph_files;
     
+    // Scansiona cartella per file .txt e .gr (esclude expected_*, update_*)
     for (const auto& entry : fs::directory_iterator(folder_path)) {
         if (!entry.is_regular_file()) continue;
         
@@ -405,13 +411,14 @@ void run_benchmark_suite(const std::string& folder_path, int K_updates, const st
         }
     }
     
-    // Sort for consistent ordering
+    // Ordina per nome file per consistenza
     std::sort(graph_files.begin(), graph_files.end());
     
     std::cerr << "Found " << graph_files.size() << " graph files to process." << std::endl;
     
+    // Per ogni file esegue il benchmark
     for (const auto& filepath : graph_files) {
-        run_benchmark_for_graph(filepath, K_updates, magnitudeOpt);
+        run_benchmark_for_graph(filepath, update_factor, magnitudeOpt);
     }
 }
 
@@ -423,18 +430,18 @@ int main(int argc, char* argv[]) {
     std::cin.tie(NULL);
     
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <folder_path> [num_updates] [magnitude]" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <folder_path> [update_factor] [magnitude]" << std::endl;
         std::cerr << "  folder_path: Path to folder containing graph files (.txt or .gr)" << std::endl;
-        std::cerr << "  num_updates: Number of random updates per graph (default: 1000)" << std::endl;
+        std::cerr << "  update_factor: Multiplier for updates relative to N (k = N * factor) (default: 1.0)" << std::endl;
         std::cerr << "  magnitude:   Update magnitude: small (±10%), large (×2 or /2), mixed (default: large)" << std::endl;
         return 1;
     }
-    
+    // Prende il path della cartella da cui prendere i file
     std::string folder_path = argv[1];
-    int K_updates = (argc >= 3) ? std::stoi(argv[2]) : 1000;
+    double update_factor = (argc >= 3) ? std::stod(argv[2]) : 1.0;
     std::string magnitudeOpt = (argc >= 4) ? argv[3] : "large";
     
-    // Validate magnitude option
+    // Controlla se la magnitudo è valida
     if (magnitudeOpt != "small" && magnitudeOpt != "large" && magnitudeOpt != "mixed") {
         std::cerr << "Error: magnitude must be 'small', 'large', or 'mixed'" << std::endl;
         return 1;
@@ -446,6 +453,6 @@ int main(int argc, char* argv[]) {
     }
     
     std::cerr << "Magnitude option: " << magnitudeOpt << std::endl;
-    run_benchmark_suite(folder_path, K_updates, magnitudeOpt);
+    run_benchmark_suite(folder_path, update_factor, magnitudeOpt);
     return 0;
 }
