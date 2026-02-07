@@ -44,6 +44,11 @@ public:
 
     // Restituisce la distanza calcolata verso un nodo
     int getDistance(int target);
+    
+    // Getter per accedere ai dati SPT (usati dal benchmark)
+    const std::vector<int>& getParent() const { return parent; }
+    const std::vector<int>& getDist() const { return dist; }
+    int getSource() const { return sourceVertex; }
 };
 
 #endif

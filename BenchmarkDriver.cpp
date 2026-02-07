@@ -112,6 +112,11 @@ public:
     }
     
     std::string getName() const override { return "Dynamic_RR"; }
+    
+    // Getter per accedere ai dati SPT (usati dal benchmark SPT-aware)
+    const std::vector<int>& getParent() const { return solver->getParent(); }
+    const std::vector<int>& getDist() const { return solver->getDist(); }
+    int getSource() const { return solver->getSource(); }
 };
 
 
@@ -204,8 +209,53 @@ struct UpdateCase {
     int u, v;
     int oldW, newW;
     std::string type;      // "Inc", "Dec", "Add", "Del"
-    std::string magnitude; // "Small", "Large", "Struct"
+    std::string magnitude; // "Small", "Large", "Struct", "SPT_root", "SPT_middle", "SPT_leaf"
 };
+
+// Informazioni su un nodo nel SPT per selezione archi a diverse profondità
+struct SPTNodeInfo {
+    int node;
+    int depth;      // Profondità nel SPT (hop dalla sorgente)
+    int parent;     // Nodo genitore nel SPT
+    int edgeWeight; // Peso arco (parent, node)
+};
+
+// Costruisce informazioni SPT con profondità per ogni nodo raggiungibile
+std::vector<SPTNodeInfo> buildSPTInfo(const RRWrapper& rr, const Graph& g) {
+    std::vector<SPTNodeInfo> sptNodes;
+    const auto& parent = rr.getParent();
+    const auto& dist = rr.getDist();
+    int source = rr.getSource();
+    int n = g.numVertices;
+    
+    // Calcola profondità con BFS sull'albero SPT
+    std::vector<int> depth(n, -1);
+    std::queue<int> q;
+    q.push(source);
+    depth[source] = 0;
+    
+    while (!q.empty()) {
+        int u = q.front(); q.pop();
+        for (int v = 0; v < n; v++) {
+            if (parent[v] == u && depth[v] == -1) {
+                depth[v] = depth[u] + 1;
+                q.push(v);
+            }
+        }
+    }
+    
+    // Raccogli tutti i nodi SPT (esclusa la sorgente)
+    for (int v = 0; v < n; v++) {
+        if (parent[v] != -1 && v != source && depth[v] > 0) {
+            int w = g.getEdgeWeight(parent[v], v);
+            if (w > 0) {
+                sptNodes.push_back({v, depth[v], parent[v], w});
+            }
+        }
+    }
+    
+    return sptNodes;
+}
 
 // Magnitude options: "small" = ±10%, "large" = ×2 or /2, "mixed" = random
 UpdateCase generateUpdate(Graph& g, std::mt19937& rng, const std::string& magnitudeOpt) {
@@ -294,7 +344,78 @@ UpdateCase generateUpdate(Graph& g, std::mt19937& rng, const std::string& magnit
     }
 }
 
-void run_benchmark_for_graph(const std::string& filepath, double update_factor, const std::string& magnitudeOpt) {
+// Genera update su archi del SPT a diverse profondità per testare correttamente RR
+// depthCategory: "root" (top 33%), "middle" (33-66%), "leaf" (bottom 33%), "mixed"
+// updateType: "increase", "decrease", "mixed"
+UpdateCase generateSPTUpdate(
+    Graph& g, 
+    const RRWrapper& rr,
+    std::mt19937& rng, 
+    const std::string& depthCategory,
+    const std::string& updateType
+) {
+    auto sptNodes = buildSPTInfo(rr, g);
+    
+    if (sptNodes.empty()) {
+        // Fallback a update casuale se SPT vuoto
+        return generateUpdate(g, rng, "large");
+    }
+    
+    // Ordina per profondità
+    std::sort(sptNodes.begin(), sptNodes.end(), 
+              [](const SPTNodeInfo& a, const SPTNodeInfo& b) { return a.depth < b.depth; });
+    
+    int maxDepth = sptNodes.back().depth;
+    if (maxDepth == 0) maxDepth = 1; // Evita divisione per zero
+    
+    // Filtra per categoria di profondità
+    std::vector<SPTNodeInfo> candidates;
+    for (const auto& info : sptNodes) {
+        double relativeDepth = (double)info.depth / maxDepth;
+        
+        bool include = false;
+        if (depthCategory == "root" && relativeDepth <= 0.33) include = true;
+        else if (depthCategory == "middle" && relativeDepth > 0.33 && relativeDepth <= 0.66) include = true;
+        else if (depthCategory == "leaf" && relativeDepth > 0.66) include = true;
+        else if (depthCategory == "mixed") include = true;
+        
+        if (include) candidates.push_back(info);
+    }
+    
+    // Fallback se categoria vuota
+    if (candidates.empty()) candidates = sptNodes;
+    
+    // Scegli un nodo candidato a caso
+    std::uniform_int_distribution<int> candDist(0, candidates.size() - 1);
+    const auto& chosen = candidates[candDist(rng)];
+    
+    UpdateCase uc;
+    uc.u = chosen.parent;
+    uc.v = chosen.node;
+    uc.oldW = chosen.edgeWeight;
+    
+    // Determina tipo di update
+    std::string actualType = updateType;
+    if (updateType == "mixed") {
+        std::uniform_int_distribution<int> typeDist(0, 1);
+        actualType = (typeDist(rng) == 0) ? "increase" : "decrease";
+    }
+    
+    if (actualType == "decrease") {
+        uc.type = "Dec";
+        uc.newW = std::max(1, uc.oldW / 2);  // Dimezza il peso
+        uc.magnitude = "SPT_" + depthCategory;
+    } else {
+        uc.type = "Inc";
+        uc.newW = uc.oldW * 2;  // Raddoppia il peso
+        uc.magnitude = "SPT_" + depthCategory;
+    }
+    
+    return uc;
+}
+
+void run_benchmark_for_graph(const std::string& filepath, double update_factor, const std::string& magnitudeOpt,
+                             const std::string& sptMode, const std::string& depthOpt, const std::string& updateTypeOpt) {
     std::string filename = fs::path(filepath).filename().string();
     
     std::cerr << "Loading graph: " << filename << std::endl;
@@ -325,10 +446,21 @@ void run_benchmark_for_graph(const std::string& filepath, double update_factor, 
     
     std::mt19937 rng(12345); // Benchmark loop rng, seed fisso per riproducibilità, servirà per generare gli update
     
-    std::cerr << "  Running " << K_updates << " updates (Factor: " << update_factor << " * N)..." << std::endl;
+    std::cerr << "  Running " << K_updates << " updates (Factor: " << update_factor << " * N)";
+    if (sptMode == "spt") {
+        std::cerr << " [SPT mode: depth=" << depthOpt << ", type=" << updateTypeOpt << "]";
+    }
+    std::cerr << "..." << std::endl;
     
     for (int k = 0; k < K_updates; ++k) {
-        UpdateCase uc = generateUpdate(g_static, rng, magnitudeOpt);
+        UpdateCase uc;
+        
+        // Scegli se usare update SPT-aware o casuale
+        if (sptMode == "spt") {
+            uc = generateSPTUpdate(g_static, dynAlgo, rng, depthOpt, updateTypeOpt);
+        } else {
+            uc = generateUpdate(g_static, rng, magnitudeOpt);
+        }
         
         // misura statica
         Stats::reset();
@@ -389,7 +521,8 @@ void run_benchmark_for_graph(const std::string& filepath, double update_factor, 
     std::cerr << "  Completed!" << std::endl;
 }
 
-void run_benchmark_suite(const std::string& folder_path, double update_factor, const std::string& magnitudeOpt) {
+void run_benchmark_suite(const std::string& folder_path, double update_factor, const std::string& magnitudeOpt,
+                         const std::string& sptMode, const std::string& depthOpt, const std::string& updateTypeOpt) {
     std::cout << "Graph_N,Graph_M,Update_ID,Type,Magnitude,"
               << "Time_Static_ns,HeapOps_Static,ScannedEdges_Static,VisitedNodes_Static,RelaxedEdges_Static,AffectedNodes_Static,"
               << "Time_Dyn_ns,HeapOps_Dyn,ScannedEdges_Dyn,VisitedNodes_Dyn,RelaxedEdges_Dyn,AffectedNodes_Dyn,"
@@ -418,7 +551,7 @@ void run_benchmark_suite(const std::string& folder_path, double update_factor, c
     
     // Per ogni file esegue il benchmark
     for (const auto& filepath : graph_files) {
-        run_benchmark_for_graph(filepath, update_factor, magnitudeOpt);
+        run_benchmark_for_graph(filepath, update_factor, magnitudeOpt, sptMode, depthOpt, updateTypeOpt);
     }
 }
 
@@ -430,20 +563,44 @@ int main(int argc, char* argv[]) {
     std::cin.tie(NULL);
     
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <folder_path> [update_factor] [magnitude]" << std::endl;
-        std::cerr << "  folder_path: Path to folder containing graph files (.txt or .gr)" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <folder_path> [update_factor] [magnitude] [spt_mode] [depth] [update_type]" << std::endl;
+        std::cerr << "  folder_path:   Path to folder containing graph files (.txt or .gr)" << std::endl;
         std::cerr << "  update_factor: Multiplier for updates relative to N (k = N * factor) (default: 1.0)" << std::endl;
-        std::cerr << "  magnitude:   Update magnitude: small (±10%), large (×2 or /2), mixed (default: large)" << std::endl;
+        std::cerr << "  magnitude:     Update magnitude: small (±10%), large (×2 or /2), mixed (default: large)" << std::endl;
+        std::cerr << "  spt_mode:      'random' (default) or 'spt' (select only SPT edges)" << std::endl;
+        std::cerr << "  depth:         SPT depth category: root, middle, leaf, mixed (default: mixed)" << std::endl;
+        std::cerr << "  update_type:   SPT update type: increase, decrease, mixed (default: mixed)" << std::endl;
         return 1;
     }
     // Prende il path della cartella da cui prendere i file
     std::string folder_path = argv[1];
     double update_factor = (argc >= 3) ? std::stod(argv[2]) : 1.0;
     std::string magnitudeOpt = (argc >= 4) ? argv[3] : "large";
+    std::string sptMode = (argc >= 5) ? argv[4] : "spt";
+    std::string depthOpt = (argc >= 6) ? argv[5] : "mixed";
+    std::string updateTypeOpt = (argc >= 7) ? argv[6] : "mixed";
     
     // Controlla se la magnitudo è valida
     if (magnitudeOpt != "small" && magnitudeOpt != "large" && magnitudeOpt != "mixed") {
         std::cerr << "Error: magnitude must be 'small', 'large', or 'mixed'" << std::endl;
+        return 1;
+    }
+    
+    // Controlla se spt_mode è valido
+    if (sptMode != "random" && sptMode != "spt") {
+        std::cerr << "Error: spt_mode must be 'random' or 'spt'" << std::endl;
+        return 1;
+    }
+    
+    // Controlla se depth è valido
+    if (depthOpt != "root" && depthOpt != "middle" && depthOpt != "leaf" && depthOpt != "mixed") {
+        std::cerr << "Error: depth must be 'root', 'middle', 'leaf', or 'mixed'" << std::endl;
+        return 1;
+    }
+    
+    // Controlla se update_type è valido
+    if (updateTypeOpt != "increase" && updateTypeOpt != "decrease" && updateTypeOpt != "mixed") {
+        std::cerr << "Error: update_type must be 'increase', 'decrease', or 'mixed'" << std::endl;
         return 1;
     }
     
@@ -453,6 +610,9 @@ int main(int argc, char* argv[]) {
     }
     
     std::cerr << "Magnitude option: " << magnitudeOpt << std::endl;
-    run_benchmark_suite(folder_path, update_factor, magnitudeOpt);
+    if (sptMode == "spt") {
+        std::cerr << "SPT mode: depth=" << depthOpt << ", update_type=" << updateTypeOpt << std::endl;
+    }
+    run_benchmark_suite(folder_path, update_factor, magnitudeOpt, sptMode, depthOpt, updateTypeOpt);
     return 0;
 }
