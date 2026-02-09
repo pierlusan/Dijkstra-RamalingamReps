@@ -50,7 +50,7 @@ int main() {
     
     // Carica grafo USA-road
     Graph g(1);
-    std::string graphPath = "/home/pierluca/Desktop/Algorithm-Engineering/Dijkstra/grafi/USA-road-d.W.gr";
+    std::string graphPath = "/home/pierluca/Desktop/Algorithm-Engineering/Dijkstra/grafi_rr/USA-road-d.W.gr";
     
     std::cout << "Caricamento grafo..." << std::endl;
     try {
