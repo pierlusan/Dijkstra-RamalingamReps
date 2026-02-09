@@ -114,6 +114,25 @@ python3 plot_dijkstra.py risultati_densi/dijkstra_densi.csv
 
 Esegue il test di complessità su operazioni W+ (aumento peso), W- (diminuzione peso), INS (inserimento) e DEL (cancellazione).
 
+#### Download del grafo
+
+Il test utilizza il grafo stradale **Western USA** dalla [9th DIMACS Implementation Challenge](https://www.diag.uniroma1.it/challenge9/download.shtml).
+
+| Grafo | Nodi | Archi |
+|-------|------|-------|
+| USA-road-d.W | 6,262,104 | 15,248,146 |
+
+```bash
+# Crea la cartella e scarica il grafo
+mkdir -p grafi_rr
+cd grafi_rr
+wget https://www.diag.uniroma1.it/challenge9/data/USA-road-d/USA-road-d.W.gr.gz
+gunzip USA-road-d.W.gr.gz
+cd ..
+```
+
+#### Esecuzione test
+
 ```bash
 ./build/test_ramalingam
 ```
