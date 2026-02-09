@@ -3,16 +3,6 @@
 
 #include <atomic>
 
-/**
- * Singleton/Static struct for collecting abstract algorithmic metrics.
- * Designed to be decoupled from timing logic.
- * 
- * Usage in Algorithms:
- *   #include "BenchmarkStats.h"
- *   ...
- *   Stats::heap_ops++;
- *   Stats::scanned_edges++;
- */
 struct Stats {
     // Total Priority Queue operations (push + pop + decrease_key)
     static inline std::atomic<long long> heap_ops{0};

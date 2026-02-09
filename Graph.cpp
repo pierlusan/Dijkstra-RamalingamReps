@@ -1,7 +1,3 @@
-//
-// Created by pierluca on 12/26/25.
-//
-
 #include "Graph.h"
 #include <iostream>
 #include <fstream>

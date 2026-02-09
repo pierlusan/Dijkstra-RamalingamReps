@@ -18,9 +18,6 @@
 #include <sys/stat.h>
 #include "Graph.h"
 
-// ============================================================================
-// GENERATORI DI GRAFI
-// ============================================================================
 
 /**
  * Grafo sparso uniforme: m = 4n archi distribuiti casualmente
@@ -101,10 +98,6 @@ void generateDense(Graph& g, int n, std::mt19937& rng, int maxWeight = 1000, dou
     }
 }
 
-// ============================================================================
-// UTILITY
-// ============================================================================
-
 void createDirectory(const std::string& path) {
     mkdir(path.c_str(), 0755);
 }
@@ -130,10 +123,6 @@ int countEdges(Graph& g) {
     return count;
 }
 
-// ============================================================================
-// MAIN
-// ============================================================================
-
 int main() {
     std::cout << "=== GRAPH GENERATOR ===" << std::endl;
     std::cout << "Genera grafi per testing Dijkstra" << std::endl << std::endl;
@@ -156,9 +145,6 @@ int main() {
     // Parametro Barabási-Albert: numero di archi per nuovo nodo
     int m_attach = 4;  // Così m ≈ 4n come nei grafi sparsi uniformi
 
-    // ========================================================================
-    // 1. GRAFI SPARSI UNIFORMI
-    // ========================================================================
     std::cout << "--- Generazione Grafi Sparsi Uniformi (m = 4n) ---" << std::endl;
     for (int n : sizes_sparse) {
         Graph g(n);
@@ -173,9 +159,6 @@ int main() {
     }
     std::cout << std::endl;
 
-    // ========================================================================
-    // 2. GRAFI BARABÁSI-ALBERT (Scale-Free)
-    // ========================================================================
     std::cout << "--- Generazione Grafi Barabási-Albert (m_attach=" << m_attach << ") ---" << std::endl;
     for (int n : sizes_sparse) {
         Graph g(n);
@@ -190,9 +173,6 @@ int main() {
     }
     std::cout << std::endl;
 
-    // ========================================================================
-    // 3. GRAFI DENSI (m ≈ n²/4)
-    // ========================================================================
     std::cout << "--- Generazione Grafi Densi (density=0.25) ---" << std::endl;
     for (int n : sizes_dense) {
         Graph g(n);

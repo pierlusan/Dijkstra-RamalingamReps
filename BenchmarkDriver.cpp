@@ -13,7 +13,7 @@
 #include "BenchmarkStats.h"
 #include "Graph.h"
 
-// --- Interfaces & Adapters ---
+
 
 struct Edge {
     int u, v;
@@ -27,15 +27,15 @@ class ISSSPWrapper {
 public:
     virtual ~ISSSPWrapper() = default;
     
-    // Initialize the algorithm with the graph structure
+    // Inizializza l'algoritmo con la struttura del grafo
     virtual void init(int source) = 0;
     
-    // Handle a dynamic edge update
+    // Gestisce un aggiornamento dinamico degli archi
     virtual void updateEdge(int u, int v, int newWeight) = 0;
     virtual void addEdge(int u, int v, int weight) = 0;
     virtual void removeEdge(int u, int v) = 0;
     
-    // Get the shortest path distance to target
+    // Restituisce la distanza del cammino minimo verso il target
     virtual int getDistance(int target) = 0;
     
     virtual std::string getName() const = 0;
@@ -46,7 +46,7 @@ public:
 
 
 
-// Redefining wrapper to store source properly
+
 class DijkstraWrapperImpl : public ISSSPWrapper {
     Graph& graph;
     std::unique_ptr<DijkstraSolver> solver; 
@@ -123,9 +123,8 @@ public:
 // per non riscriverlo ogni volta per intero
 namespace fs = std::filesystem;
 
-// --- Graph Loading Utilities ---
 
-// Load graph from .txt format: first line = N, then "u v w" edges
+// Carica il grafo dal formato .txt: prima riga = N, poi archi "u v w"
 std::pair<int, std::vector<Edge>> loadGraphFromTxt(const std::string& filepath) {
     std::ifstream file(filepath);
     if (!file.is_open()) {
@@ -145,7 +144,7 @@ std::pair<int, std::vector<Edge>> loadGraphFromTxt(const std::string& filepath) 
     return {N, edges};
 }
 
-// Load graph from DIMACS .gr format: "p sp N M" header, "a u v w" edges
+// Carica il grafo dal formato DIMACS .gr: intestazione "p sp N M", archi "a u v w"
 std::pair<int, std::vector<Edge>> loadGraphFromGR(const std::string& filepath) {
     std::ifstream file(filepath);
     if (!file.is_open()) {
@@ -160,23 +159,23 @@ std::pair<int, std::vector<Edge>> loadGraphFromGR(const std::string& filepath) {
         if (line.empty()) continue;
         
         if (line[0] == 'c') {
-            // Comment line, skip
+           
             continue;
         } else if (line[0] == 'p') {
-            // Problem line: p sp N M
+           
             std::istringstream iss(line);
             std::string p, sp;
             int M;
             iss >> p >> sp >> N >> M;
             edges.reserve(M);
         } else if (line[0] == 'a') {
-            // Arc line: a u v w
+           
             std::istringstream iss(line);
             char a;
             int u, v;
             long long w;
             iss >> a >> u >> v >> w;
-            // DIMACS uses 1-based indexing, convert to 0-based
+           
             edges.push_back({u - 1, v - 1, w});
         }
     }
@@ -184,26 +183,26 @@ std::pair<int, std::vector<Edge>> loadGraphFromGR(const std::string& filepath) {
     return {N, edges};
 }
 
-// Auto-detect format and load graph
+// Rileva automaticamente il formato e carica il grafo
 std::pair<int, std::vector<Edge>> loadGraph(const std::string& filepath) {
     std::string ext = fs::path(filepath).extension().string();
     
     if (ext == ".gr") {
         return loadGraphFromGR(filepath);
     } else {
-        // Default to .txt format
+        // Default al formato .txt
         return loadGraphFromTxt(filepath);
     }
 }
 
-// Build Graph object from edges
+// Costruisce l'oggetto Graph dagli archi
 void buildGraph(Graph& g, const std::vector<Edge>& edges) {
     for (const auto& e : edges) {
         g.addEdge(e.u, e.v, static_cast<int>(e.w));
     }
 }
 
-// --- Benchmark Logic ---
+// --- Logica del Benchmark ---
 
 struct UpdateCase {
     int u, v;
@@ -257,7 +256,7 @@ std::vector<SPTNodeInfo> buildSPTInfo(const RRWrapper& rr, const Graph& g) {
     return sptNodes;
 }
 
-// Magnitude options: "small" = ±10%, "large" = ×2 or /2, "mixed" = random
+// Opzioni di magnitudo: "small" = ±10%, "large" = ×2 o /2, "mixed" = casuale
 UpdateCase generateUpdate(Graph& g, std::mt19937& rng, const std::string& magnitudeOpt) {
     std::uniform_int_distribution<int> nodeDist(0, g.numVertices - 1);
     std::uniform_int_distribution<int> opDist(0, 100); 
@@ -265,7 +264,7 @@ UpdateCase generateUpdate(Graph& g, std::mt19937& rng, const std::string& magnit
     while(true) {
         int op = opDist(rng); // Numero random 0-100
         
-        // 50% Weight Update, 25% Add, 25% Delete
+        // 50% Aggiornamento Peso, 25% Aggiunta, 25% Eliminazione
         
         if (op < 50) { // Weight Update
             int u = nodeDist(rng); // Numero random 0-100
@@ -344,7 +343,7 @@ UpdateCase generateUpdate(Graph& g, std::mt19937& rng, const std::string& magnit
     }
 }
 
-// Genera update su archi del SPT a diverse profondità per testare correttamente RR
+// Genera aggiornamenti su archi del SPT a diverse profondità per testare correttamente RR
 // depthCategory: "root" (top 33%), "middle" (33-66%), "leaf" (bottom 33%), "mixed"
 // updateType: "increase", "decrease", "mixed"
 UpdateCase generateSPTUpdate(
@@ -495,7 +494,7 @@ void run_benchmark_for_graph(const std::string& filepath, double update_factor, 
         long long affected_dyn = Stats::affected_nodes;
         
 
-        // Validazione, prendo 10 nodi a caso e controllo che le distanze siano uguali (da eliminare in futuro)
+        // Validazione: prendo 10 nodi a caso e controllo che le distanze siano uguali (da eliminare in futuro)
         // for (int i = 0; i < 10; ++i) {
         //     std::uniform_int_distribution<int> checkDist(0, N - 1);
         //     int node = checkDist(rng);
@@ -530,12 +529,12 @@ void run_benchmark_suite(const std::string& folder_path, double update_factor, c
     
     std::vector<std::string> graph_files;
     
-    // Scansiona cartella per file .txt e .gr (esclude expected_*, update_*)
+    // Scansiona la cartella per file .txt e .gr (esclude expected_*, update_*)
     for (const auto& entry : fs::directory_iterator(folder_path)) {
         if (!entry.is_regular_file()) continue;
         
         std::string ext = entry.path().extension().string();
-        // Only process .txt and .gr files (exclude expected_*.txt and update files)
+        // Processa solo file .txt e .gr (esclude expected_*.txt e file update)
         std::string filename = entry.path().filename().string();
         if ((ext == ".txt" || ext == ".gr") && 
             filename.find("expected") == std::string::npos &&
@@ -556,7 +555,7 @@ void run_benchmark_suite(const std::string& folder_path, double update_factor, c
 }
 
 int main(int argc, char* argv[]) {
-    // Fast IO: Ottimizza drasticamente la velocità di Input/Output
+    // I/O Veloce: Ottimizza drasticamente la velocità di Input/Output
     // Disabilita la sincronizzazione con gli stream C (printf/scanf) per performance
     std::ios_base::sync_with_stdio(false);
     // Slega cin da cout: evita il flush automatico del buffer di output ad ogni input (utile per grandi letture)
