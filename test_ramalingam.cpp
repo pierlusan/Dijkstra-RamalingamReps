@@ -89,7 +89,7 @@ int main() {
         }
     }
     
-    // Ordina per distanza e campiona uniformemente
+    // Ordina per distanza e campiona uniformemente perchè vogliamo testare archi a diverse distanze dalla sorgente
     std::sort(testEdges.begin(), testEdges.end(), 
               [](const auto& a, const auto& b) { return std::get<3>(a) < std::get<3>(b); });
     
@@ -124,7 +124,7 @@ int main() {
     
     int passed = 0, failed = 0;
     int opCounts[4] = {0, 0, 0, 0}; // conta operazioni per tipo
-    
+    //ciclo tra i 4 tipi di operazione. Li alterna in ordine
     for (size_t i = 0; i < selectedEdges.size(); ++i) {
         auto [u, v, origW, distFromSource] = selectedEdges[i];
         

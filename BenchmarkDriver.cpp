@@ -420,7 +420,7 @@ void run_benchmark_for_graph(const std::string& filepath, double update_factor, 
     std::cerr << "Loading graph: " << filename << std::endl;
     
     auto [N, edges] = loadGraph(filepath);
-    int M = static_cast<int>(edges.size());
+    int M = static_cast<int>(edges.size()); 
     
     std::cerr << "  Vertices: " << N << ", Edges: " << M << std::endl;
     
@@ -543,7 +543,7 @@ void run_benchmark_suite(const std::string& folder_path, double update_factor, c
         }
     }
     
-    // Ordina per nome file per consistenza
+    // Ordina per nome file per consistenza perchè i file sono nominati in modo da essere ordinati per numero di nodi
     std::sort(graph_files.begin(), graph_files.end());
     
     std::cerr << "Found " << graph_files.size() << " graph files to process." << std::endl;

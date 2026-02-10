@@ -48,7 +48,7 @@ void generateBarabasiAlbertEfficient(Graph& g, int n, int m_attach, std::mt19937
     std::vector<int> edge_list;
     edge_list.reserve(2 * n * m_attach);
 
-    // Nucleo iniziale: clique di m_attach + 1 nodi
+    // Nucleo iniziale: clique di m_attach + 1 nodi. tutti collegati tra loro bidirezionalmente
     for (int i = 0; i <= m_attach; ++i) {
         for (int j = i + 1; j <= m_attach; ++j) {
             int w = weightDist(rng);
@@ -63,12 +63,12 @@ void generateBarabasiAlbertEfficient(Graph& g, int n, int m_attach, std::mt19937
     for (int i = m_attach + 1; i < n; ++i) {
         std::vector<int> targets;
         while (targets.size() < (size_t)m_attach) {
-            int t = edge_list[std::uniform_int_distribution<int>(0, edge_list.size() - 1)(rng)];
-            if (t != i && std::find(targets.begin(), targets.end(), t) == targets.end()) {
+            int t = edge_list[std::uniform_int_distribution<int>(0, edge_list.size() - 1)(rng)];//sceglie un nodo a caso tra quelli già esistenti
+            if (t != i && std::find(targets.begin(), targets.end(), t) == targets.end()) { //se non è il nodo corrente e non è già stato scelto
                 targets.push_back(t);
             }
         }
-
+        //aggiunge archi tra il nodo corrente e i nodi scelti
         for (int t : targets) {
             int w = weightDist(rng);
             g.addEdge(i, t, w);
